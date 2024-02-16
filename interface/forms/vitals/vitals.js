@@ -109,6 +109,27 @@
         vitalsConvInputs.forEach(function(node) {
             node.addEventListener('change', convInputElement);
         });
+        let formControlElements = document.querySelectorAll('.form-control.skip-template-editor');
+        formControlElements.forEach(function (node) {
+            if (node.id !== 'BMI_status') {
+               node.placeholder = 'Enter a number';
+
+               node.addEventListener('input', function() {
+                  if (!this.value.match(/^(?:\d+\.\d*|\.\d+|\d+)$/)) {
+                      var currentValue = this.value;
+                      var newValue = currentValue.replace(/[^0-9.]+/g, '')
+                        .replace(/(\..*)\./g, '$1')
+                        .replace(/(^\.)+/g, '');
+                      this.value = newValue;
+                      this.setCustomValidity('Please enter a valid integer.');
+                  } else {
+                      this.setCustomValidity(' ');
+                  }
+
+                  this.reportValidity();
+               });
+            }
+        });
     }
     function init(webRootParam, vitalsTranslations) {
         webroot = webRootParam;
