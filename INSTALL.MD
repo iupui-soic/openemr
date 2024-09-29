@@ -41,7 +41,7 @@ If you face any issues while installing the docker then use the sudo reboot comm
 sudo adduser oemr​
 ```
 Enter your password​
-Click enter and If the information is correct. Click Y(yes).​
+ Click enter and If the information is correct. Click Y (yes).​
 
 ## Create Docker user
 ```bash
@@ -70,7 +70,7 @@ services:
   mysql:
     restart: always
     image: mariadb:10.11
-    command: ['mysqld', '--character-set-server=utf8mb4',#notes commad]
+    command: ['mysqld','--character-set-server=utf8mb4','--innodb_buffer_pool_size=12G']
     volumes:
       - databasevolume:/var/lib/mysql
     ports:
@@ -83,7 +83,7 @@ services:
     image: openemr/openemr:7.0.2
     ports:
       - 8080:80
-      - 443:443
+      - #443:443
     volumes:
       - logvolume01:/var/log
       - sitevolume:/var/www/localhost/htdocs/openemr/sites
@@ -137,11 +137,13 @@ rm –Rf oemr_databasevolume/​
 rm –Rf oemr_logvolume01/​
 rm –Rf oemr_sitevolume/
 ```
+enter your username in place of oemr 
 ```bash
 cp -r /home/oemr/oemr_databasevolume oemr_databasevolume
 cp -r /home/oemr/oemr_logvolume01/ oemr_logvolume01
-cp -r /home/oemr/oemr_sitevolume oemr_sitevolume
-
+cp -r /home/oemr/oemr_sitevolume/ oemr_sitevolume
+```
+```bash
 chown -Rf oemr:root oemr_databasevolume/_data/
 chown -Rf oemr:root oemr_logvolume01/_data/
 chown -Rf oemr:root oemr_sitevolume/_data/
@@ -167,7 +169,7 @@ ls –al
 ```
 There should not be any numbers(1008,1001 etc), root in the apache column so to change this we do the change ownership.
 ```
-chown –Rf apache:root 
+chown –Rf apache:root . 
 ```
 exit
 
@@ -230,8 +232,7 @@ sudo nano /etc/apache2/sites-enabled/default-ssl.conf
   </VirtualHost>
 </IfModule>
 ```
-## Run SQL to import CPT4 
- File in EHR-dev channel - cpt4_final.sql 
+
 
 
 
