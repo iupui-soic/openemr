@@ -1360,21 +1360,24 @@ $oemr_ui = new OemrUI($arrOeUiSettings);
                         $dispatchResult = $ed->dispatch(new CardRenderEvent('vital_sign'), CardRenderEvent::EVENT_HANDLE);
                         // vitals expand collapse widget
                         // check to see if any vitals exist
-                        $existVitals = sqlQuery("SELECT * FROM form_vitals WHERE pid=?", array($pid));
-                        $widgetAuth = ($existVitals) ? true : false;
+                            $existVitals = sqlQuery("SELECT * FROM form_vitals WHERE pid=?", array($pid));
+                            $formId = sqlQuery("SELECT MAX(id) as max_id FROM form_vitals WHERE pid=?", array($pid));
+                            $widgetAuth = ($existVitals) ? true : false;
 
-                        $id = "vitals_ps_expand";
-                        $viewArgs = [
-                            'title' => xl('Vitals'),
-                            'id' => $id,
-                            'initiallyCollapsed' => (getUserSetting($id) == 0) ? true : false,
-                            'btnLabel' => 'Edit',
-                            'btnLink' => '../encounter/view_form.php?formname=vitals',
-                            'bodyClass' => 'collapse show',
-                            'auth' => $widgetAuth,
-                            'prependedInjection' => $dispatchResult->getPrependedInjection(),
-                            'appendedInjection' => $dispatchResult->getAppendedInjection(),
-                        ];
+                            $id = "vitals_ps_expand";
+                            $viewArgs = [
+                                'title' => xl('Vitals'),
+                                'id' => $id,
+                                'initiallyCollapsed' => (getUserSetting($id) == 0) ? true : false,
+                                'btnLabel' => 'Edit',
+                                'btnLink' => "../encounter/view_form.php?formname=vitals&id=" . $formId['max_id'],
+                                'linkMethod' => 'html',
+                                'bodyClass' => 'collapse show',
+                                'auth' => $widgetAuth,
+                                'prependedInjection' => $dispatchResult->getPrependedInjection(),
+                                'appendedInjection' => $dispatchResult->getAppendedInjection(),
+                            ];
+
                         echo $twig->getTwig()->render('patient/card/loader.html.twig', $viewArgs);
                     endif; // end vitals
 
