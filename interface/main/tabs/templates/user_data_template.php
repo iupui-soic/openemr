@@ -20,6 +20,7 @@
     <!-- ko with: user -->
         <div id="username" class="appMenu ml-3">
                 <div class='menuLabel dropdown' id="username" title="<?php echo xla('Current user') ?>" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <span data-bind="text:fname"></span>&nbsp;<span data-bind="text:lname"></span>
                     <span class="fa-stack">
                         <i class="far text-muted fa-circle fa-2x fa-stack-2x"></i>
                         <i class="fa text-muted fa-user fa-lg fa-stack-1x" aria-hidden="true" id="user_icon"></i>
