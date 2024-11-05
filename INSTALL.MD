@@ -16,7 +16,7 @@
 ## Check if the Instance is Clean Before Installation
 
 ```bash
-sudo su – oemr
+sudo su - oemr
 docker ps -a
 ```
 
@@ -54,8 +54,9 @@ LOGOUT and LOGIN
 sudo su - oemr
 docker run hello-world
 sudo systemctl enable containerd.service
+sudo systemctl enable docker.service
 sudo apt-get install docker-compose -y
-sudo su – oemr​
+sudo su - oemr​
 nano docker-compose.yml
 ```
 ## Create docker-compose
@@ -70,9 +71,9 @@ services:
   mysql:
     restart: always
     image: mariadb:10.11
-    command:['mysqld','--character-set-server=utf8mb4','--innodb_buffer_pool_size=12G'] 
+    command: ['mysqld','--character-set-server=utf8mb4','--innodb_buffer_pool_size=12G'] 
     volumes:
-      - databasevolume:/var/lib/mysql
+      - oemr_databasevolume:/var/lib/mysql
     ports:
       - 3306:3306
     environment:
@@ -80,14 +81,14 @@ services:
 
   openemr:
     restart: always
-    image: openemr/openemr:7.0.2
+    image: ghcr.io/iupui-soic/seiri22:latest
     ports:
       - 8080:80
-      -# 443:443
+      #- 443:443
     volumes:
-      - logvolume01:/var/log
-      - sitevolume:/var/www/localhost/htdocs/openemr/sites
-      - ./custom-php.ini:/etc/php82/php.ini 
+      - oemr_logvolume01:/var/log
+      - oemr_sitevolume:/var/www/localhost/htdocs/openemr/sites
+      #- ./custom-php.ini:/etc/php82/php.ini 
     environment:
       MYSQL_HOST: mysql
       MYSQL_ROOT_PASS: root
@@ -99,9 +100,9 @@ services:
       - mysql
 
 volumes:
-  logvolume01: {}
-  sitevolume: {}
-  databasevolume: {}
+  oemr_logvolume01: {external: true}
+  oemr_sitevolume: {external: true}
+  oemr_databasevolume: {external: true}
 ```
 ## If you have access to volumes(100 patients)
 ```bash
@@ -129,13 +130,11 @@ cd /var/lib/docker/volumes/
 ```
 use this command to check if the volumes already exist
 ```bash
-ls –al 
+ls -al 
 ```
-Remove the volumes if already exist, so that they can replaced by the new volumes
+Remove the volumes using this command if already exist, so that they can replaced by the new volumes
 ```bash
-rm –Rf oemr_databasevolume/​
-rm –Rf oemr_logvolume01/​
-rm –Rf oemr_sitevolume/
+rm -Rf 
 ```
 use your username in place of oemr
 ```bash
@@ -149,7 +148,7 @@ chown -Rf oemr:root oemr_sitevolume/_data/
 ```
 To check if the volumes have been copied with the right permissions
 ```bash
-ls –al
+ls -al
 ```
 exit
 ```bash
@@ -161,28 +160,16 @@ Start a local connection and check the patient data.
 
  Check the webpage. If it does not open then check this.
 ```bash
-docker compose up –d​
-docker ps –a​
-docker exec –it <container id> /bin/sh​
-ls –al
+docker compose up -d​
+docker ps -a​
+docker exec -it <container id> /bin/sh​
+ls -al
 ```
 There should not be any numbers(1008,1001 etc), root in the apache column so to change this we do the change ownership.
 ```
-chown –Rf apache:root .
+chown -Rf apache:root .
 ```
 exit
-
-REMEMBER TO CHANGE THE DOCKER COMPOSE to point to these volume locations 
-```yml
-nano docker-compose.yml
-volumes:
-  oemr_databasevolume:
-    external: true
-  oemr_logvolume01:
-    external: true
-  oemr_sitevolume:
-    external: true
-```
 
 ## Clone devops repo 
 ```bash
