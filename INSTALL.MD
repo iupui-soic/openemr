@@ -9,9 +9,9 @@
 - [The volumes are created and restored](#the-volumes-are-created-and-restored)
 - [Clone DevOps Repo](#clone-devops-repo)
 - [Docker Installation Recording (9/8/2023)](#docker-installation-recording-982023)
-- [Apache Configuration for HTTPS (if not done by David)](#apache-configuration-for-https-if-not-done-by-david)
+- [Apache Configuration for HTTPS (if not done by David - University IT Person)](#apache-configuration-for-https-if-not-done-by-david)
 
-
+## Note: All the sudo commands should be run in your user account, and the docker and nano commands should be run in the oemr user account.
 
 ## Check if the Instance is Clean Before Installation
 
@@ -20,10 +20,16 @@ sudo su - oemr
 docker ps -a
 ```
 
-## (if needed)Deletion comments
+## (if needed)Deletion of volumes
 ```bash
-docker-compose down
+docker compose down
 ```
+## (if needed)Deletion of other containers
+```bash
+docker rm <container_id>
+exit
+```
+
 ## Install docker
 ```bash
 sudo apt-get update
@@ -43,22 +49,23 @@ sudo adduser oemr​
 Enter your password​
 Click enter and If the information is correct. Click Y(yes).​
 
-## Create Docker user
+## Create Docker user ($USER should be the superuser - oemr)
 ```bash
 sudo groupadd docker
 sudo usermod -aG docker $USER
 ```
-(Anything that has docker command should be run by oemr user)
 LOGOUT and LOGIN
 ```bash
 sudo su - oemr
 docker run hello-world
+exit
 sudo systemctl enable containerd.service
 sudo systemctl enable docker.service
 sudo apt-get install docker-compose -y
-sudo su - oemr​
+sudo su - oemr
 nano docker-compose.yml
 ```
+
 ## Create docker-compose
  Use admin/pass as user/password credentials to login to openemr (from OE_USER and OE_PASS below) 
  MYSQL_HOST and MYSQL_ROOT_PASS are required for openemr 
@@ -66,29 +73,27 @@ MYSQL_USER, MYSQL_PASS, OE_USER, MYSQL_PASS are optional for openemr and
 if not provided, then default to openemr, openemr, admin, and pass respectively. 
 ```yaml
 version: '3.1'
-
 services:
   mysql:
     restart: always
-    image: mariadb:10.11
-    command: ['mysqld','--character-set-server=utf8mb4','--innodb_buffer_pool_size=12G'] 
+    image: mariadb:10.6
+    command: ['mysqld','--character-set-server=utf8mb4']
     volumes:
-      - oemr_databasevolume:/var/lib/mysql
+    - oemr_databasevolume:/var/lib/mysql
     ports:
-      - 3306:3306
+    - 3306:3306
     environment:
       MYSQL_ROOT_PASSWORD: root
-
   openemr:
     restart: always
     image: ghcr.io/iupui-soic/seiri22:latest
     ports:
-      - 8080:80
-      #- 443:443
+    - 8080:80
+    #- 443:443
     volumes:
-      - oemr_logvolume01:/var/log
-      - oemr_sitevolume:/var/www/localhost/htdocs/openemr/sites
-      #- ./custom-php.ini:/etc/php82/php.ini 
+    - oemr_logvolume01:/var/log
+    - oemr_sitevolume:/var/www/localhost/htdocs/openemr/sites
+    #- /home/oemr/openemr-devops/docker/openemr/flex-edge/utilities/:/root/
     environment:
       MYSQL_HOST: mysql
       MYSQL_ROOT_PASS: root
@@ -97,26 +102,24 @@ services:
       OE_USER: admin
       OE_PASS: pass
     depends_on:
-      - mysql
-
+    - mysql
 volumes:
   oemr_logvolume01: {external: true}
   oemr_sitevolume: {external: true}
   oemr_databasevolume: {external: true}
 ```
-## If you have access to volumes(100 patients)
+## If you have access to volumes (If the link is a shortened URL, use the following commands)
 ```bash
 sudo apt-get install p7zip-full -y
-wget https://go.iu.edu/8qfT
-mv 8qfT 3-volumes.zip
+wget <link>
+mv <filename> 3-volumes.zip
 unzip 3-volumes.zip
 ```
-## If you have access to volumes(11k patients) 
-```bash
+## If you have access to volumes (If the link is a long URL, use the following commands)
 sudo apt-get install p7zip-full -y
-wget https://go.iu.edu/8qSs 
-mv 8qSs 3-volumes.tar.gz 
-tar -xvzf 3-volumes.tar.gz
+wget <downloadlink>?download=1
+mv <longfilename> 3-volumes.7z
+7z x 3-volumes.7z
 ```
 ## The volumes are created and restored.
 ```bash
@@ -134,7 +137,7 @@ ls -al
 ```
 Remove the volumes using this command if already exist, so that they can replaced by the new volumes
 ```bash
-rm -Rf 
+rm -Rf <filename>
 ```
 use your username in place of oemr
 ```bash
@@ -160,9 +163,8 @@ Start a local connection and check the patient data.
 
  Check the webpage. If it does not open then check this.
 ```bash
-docker compose up -d​
 docker ps -a​
-docker exec -it <container id> /bin/sh​
+docker exec -it <container_id> /bin/sh​
 ls -al
 ```
 There should not be any numbers(1008,1001 etc), root in the apache column so to change this we do the change ownership.
