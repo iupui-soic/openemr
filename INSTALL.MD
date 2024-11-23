@@ -67,11 +67,12 @@ nano docker-compose.yml
 ```
 
 ## Create docker-compose
- Use admin/pass as user/password credentials to login to openemr (from OE_USER and OE_PASS below) 
- MYSQL_HOST and MYSQL_ROOT_PASS are required for openemr 
-MYSQL_USER, MYSQL_PASS, OE_USER, MYSQL_PASS are optional for openemr and 
-if not provided, then default to openemr, openemr, admin, and pass respectively. 
+ 
 ```yaml
+# Use admin/pass as user/password credentials to login to openemr (from OE_USER and OE_PASS below)
+# MYSQL_HOST and MYSQL_ROOT_PASS are required for openemr
+# MYSQL_USER, MYSQL_PASS, OE_USER, MYSQL_PASS are optional for openemr and
+#   if not provided, then default to openemr, openemr, admin, and pass respectively.
 version: '3.1'
 services:
   mysql:
@@ -116,6 +117,7 @@ mv <filename> 3-volumes.zip
 unzip 3-volumes.zip
 ```
 ## If you have access to volumes (If the link is a long URL, use the following commands)
+```bash
 sudo apt-get install p7zip-full -y
 wget <downloadlink>?download=1
 mv <longfilename> 3-volumes.7z
@@ -163,8 +165,8 @@ Start a local connection and check the patient data.
 
  Check the webpage. If it does not open then check this.
 ```bash
-docker ps -a​
-docker exec -it <container_id> /bin/sh​
+docker ps -a
+docker exec -it <container_id> /bin/sh
 ls -al
 ```
 There should not be any numbers(1008,1001 etc), root in the apache column so to change this we do the change ownership.
