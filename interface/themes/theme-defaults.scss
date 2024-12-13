@@ -429,3 +429,7 @@ fieldset {
 .about-review-image > #color {
   fill: #083c5d;
 }
+
+.dropdown-menu.show {
+ z-index: 1900;
+}    
