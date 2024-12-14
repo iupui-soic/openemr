@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the root directory for the scripts
-ROOT_DIR="/home/mkokkala/oemr_selemium/openemr/oemr-selenium"
+ROOT_DIR="/home/ksunchu/oemr_selenium/openemr/oemr-selenium"
 
 echo "Cron job started at $(date)" >> "$ROOT_DIR/logfile.log"
 
@@ -19,7 +19,7 @@ rm -f $REPORT_FILE
 cd $ROOT_DIR
 
 # Define your test files
-TEST_FILES="login_tests.py logout.py vitals.py patient_search.py"
+TEST_FILES="login_tests.py logout.py vitals.py patient_search.py cdr_rule.py"
 
 # Run pytest to execute all specified tests and generate a single HTML report
 # HEADLESS=true is set if you're running tests in headless mode

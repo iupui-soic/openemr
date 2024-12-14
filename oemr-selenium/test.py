@@ -21,14 +21,14 @@ class TestWebsite:
 
         self.browser.maximize_window()
         self.browser.implicitly_wait(10)
-        self.browser.get("https://in-info-web18.luddy.iupui.edu/interface/login/login.php?site=default")
+        self.browser.get("https://in-info-web18.luddy.indianapolis.iu.edu/interface/login/login.php?site=default")
 
         """this test checks login functionality"""
         self.browser.find_element(By.ID, 'authUser').send_keys(get_user())
         self.browser.find_element(By.ID, "clearPass").send_keys(get_pass())
         self.browser.find_element(By.ID, "login-button").submit()
 
-        assert "https://in-info-web18.luddy.iupui.edu/interface/main/tabs/main.php" in self.browser.current_url
+        assert "https://in-info-web18.luddy.indianapolis.iu.edu/interface/main/tabs/main.php?" in self.browser.current_url
 
         # Close all open tabs first
         for tabClose in self.browser.find_elements(By.CSS_SELECTOR, 'span[class="fa fa-fw fa-xs fa-times"]'):
