@@ -26,19 +26,22 @@ class TestWebsite_logout:
         self.browser.close()
         self.browser.quit()
 
-    @pytest.mark.parametrize("url, username, password", read_configurations_from_file("secret.json"))
-    def test_logout(self, url, username, password):
-        success = login(self.browser, username, password, url)
-        assert success, "Login failed"
+    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
+    def test_logout(self, server_name, url, username, password):
+        # Login to the application
+        success = login(self.browser, username, password, url, server_name)
+        assert success, f"Login failed for server: {server_name}"
 
+        # Click the username/profile icon
         self.browser.find_element(By.ID, 'username').click()
 
+        # Find and click the logout button
         logout_element = self.browser.find_element(By.XPATH, '//li[@class="menuLabel"][last()]')
         logout_element.click()
 
-        # Wait for the URL to change to the expected value
+        # Wait for the URL to change to the expected login URL
         expected_url = url
         WebDriverWait(self.browser, 10).until(EC.url_to_be(expected_url))
 
         # Assert the current URL after logout
-        assert self.browser.current_url == expected_url
+        assert self.browser.current_url == expected_url, f"Logout failed for server: {server_name}"

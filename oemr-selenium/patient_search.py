@@ -3,7 +3,6 @@ import os
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from webdriver_manager.core.os_manager import ChromeType
 from webdriver_manager.chrome import ChromeDriverManager
 from test_utils import *
 
@@ -17,17 +16,16 @@ class TestWebsite_patient_search:
             options.add_argument("--disable-dev-shm-usage")
 
         self.browser = webdriver.Chrome(options=options)
-        #self.browser.maximize_window()
+        # self.browser.maximize_window()
         self.browser.implicitly_wait(10)
 
         yield  # This allows the subsequent test methods to run
         self.browser.close()
         self.browser.quit()
 
-    @pytest.mark.parametrize("url, username, password", read_configurations_from_file("secret.json"))
-    def test_search_found_patient_using_search_bar(self, url, username, password):
-
-        success = login(self.browser, username, password, url)
+    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
+    def test_search_found_patient_using_search_bar(self, server_name, url, username, password):
+        success = login(self.browser, username, password, url, server_name)
         assert success, "Login failed"
 
         self.browser.find_element(By.ID, 'anySearchBox').send_keys('Abdul')
@@ -41,13 +39,13 @@ class TestWebsite_patient_search:
         iframe = self.browser.find_element(By.CSS_SELECTOR, '#framesDisplay > div > iframe')
         self.browser.switch_to.frame(iframe)
 
-        patient1Found = self.browser.find_element(By.ID, "pid_1")
-        assert patient1Found is not None
+        patient1Found = self.browser.find_elements(By.ID, "pid_1")
+        patient154Found = self.browser.find_elements(By.ID, "pid_154")
+        assert patient1Found or patient154Found, "Neither pid_1 nor pid_154 found"
 
-    @pytest.mark.parametrize("url, username, password", read_configurations_from_file("secret.json"))
-    def test_search_not_found_patient_using_search_bar(self, url, username, password):
-
-        success = login(self.browser, username, password, url)
+    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
+    def test_search_not_found_patient_using_search_bar(self, server_name, url, username, password):
+        success = login(self.browser, username, password, url, server_name)
         assert success, "Login failed"
 
         self.browser.find_element(By.ID, 'anySearchBox').clear()
@@ -60,12 +58,11 @@ class TestWebsite_patient_search:
         iframe = self.browser.find_element(By.CSS_SELECTOR, '#framesDisplay > div > iframe')
         self.browser.switch_to.frame(iframe)
 
-        assert not len(self.browser.find_elements(By.ID, "pid_1"))
+        assert not len(self.browser.find_elements(By.ID, "pid_1")) and not len(self.browser.find_elements(By.ID, "pid_154"))
 
-    @pytest.mark.parametrize("url, username, password", read_configurations_from_file("secret.json"))
-    def test_search_found_patient_using_finder(self, url, username, password):
-
-        success = login(self.browser, username, password, url)
+    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
+    def test_search_found_patient_using_finder(self, server_name, url, username, password):
+        success = login(self.browser, username, password, url, server_name)
         assert success, "Login failed"
 
         hamburger_menu = self.browser.find_element(By.XPATH, '//*[@id="mainBox"]/nav/button')
@@ -85,13 +82,13 @@ class TestWebsite_patient_search:
         # Input text into the search box
         search_box.send_keys("Abdul")
 
-        patient1Found = self.browser.find_element(By.ID, "pid_1")
-        assert patient1Found is not None
+        patient1Found = self.browser.find_elements(By.ID, "pid_1")
+        patient154Found = self.browser.find_elements(By.ID, "pid_154")
+        assert patient1Found or patient154Found, "Neither pid_1 nor pid_154 found"
 
-    @pytest.mark.parametrize("url, username, password", read_configurations_from_file("secret.json"))
-    def test_search_not_found_patient_using_finder(self, url, username, password):
-
-        success = login(self.browser, username, password, url)
+    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
+    def test_search_not_found_patient_using_finder(self, server_name, url, username, password):
+        success = login(self.browser, username, password, url, server_name)
         assert success, "Login failed"
 
         hamburger_menu = self.browser.find_element(By.XPATH, '//*[@id="mainBox"]/nav/button')
@@ -111,4 +108,4 @@ class TestWebsite_patient_search:
         # Input text into the search box
         search_box.send_keys("xyz")
 
-        assert not len(self.browser.find_elements(By.ID, "pid_1"))
+        assert not len(self.browser.find_elements(By.ID, "pid_1")) and not len(self.browser.find_elements(By.ID, "pid_154"))

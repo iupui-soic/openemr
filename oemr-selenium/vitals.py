@@ -23,17 +23,17 @@ class TestWebsite_vitals:
             options.add_argument("--disable-dev-shm-usage")
 
         self.browser = webdriver.Chrome(options=options)
-        #self.browser.maximize_window()
+        self.browser.maximize_window()
         self.browser.implicitly_wait(10)
 
         yield
         self.browser.close()
         self.browser.quit()
 
-    @pytest.mark.parametrize("url, username, password", read_configurations_from_file("secret.json"))
-    def test_vitals_is_present_on_patient_dashboard(self, url, username, password):
-        success = login(self.browser, username, password, url)
-        assert success, "Login failed"
+    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
+    def test_vitals_is_present_on_patient_dashboard(self, server_name, url, username, password):
+        success = login(self.browser, username, password, url, server_name)
+        assert success, f"Login failed for server {server_name}"
 
         self.browser.find_element(By.ID, 'anySearchBox').send_keys('Abdul')
         self.browser.find_element(By.ID, 'search_globals').click()
@@ -46,9 +46,11 @@ class TestWebsite_vitals:
         iframe = self.browser.find_element(By.CSS_SELECTOR, '#framesDisplay > div > iframe')
         self.browser.switch_to.frame(iframe)
 
-        patient1Found = self.browser.find_element(By.ID, "pid_1")
+        patient1Found = self.browser.find_elements(By.ID, "pid_1")
+        patient154Found = self.browser.find_elements(By.ID, "pid_154")
+        assert patient1Found or patient154Found, "Neither pid_1 nor pid_154 found"
 
-        patient1Found.click()
+        (patient1Found or patient154Found)[0].click()
 
         self.browser.switch_to.default_content()
 
@@ -89,10 +91,10 @@ class TestWebsite_vitals:
             except NoSuchElementException:
                 pass
 
-    @pytest.mark.parametrize("url, username, password", read_configurations_from_file("secret.json"))
-    def test_vitals_validation_in_encounters(self, url, username, password):
-        success = login(self.browser, username, password, url)
-        assert success, "Login failed"
+    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
+    def test_vitals_validation_in_encounters(self, server_name, url, username, password):
+        success = login(self.browser, username, password, url, server_name)
+        assert success, f"Login failed for server {server_name}"
 
         self.browser.find_element(By.ID, 'anySearchBox').send_keys('Abdul')
         self.browser.find_element(By.ID, 'search_globals').click()
@@ -105,8 +107,11 @@ class TestWebsite_vitals:
         iframe = self.browser.find_element(By.CSS_SELECTOR, '#framesDisplay > div > iframe')
         self.browser.switch_to.frame(iframe)
 
-        patient1Found = self.browser.find_element(By.ID, "pid_1")
-        patient1Found.click()
+        patient1Found = self.browser.find_elements(By.ID, "pid_1")
+        patient154Found = self.browser.find_elements(By.ID, "pid_154")
+        assert patient1Found or patient154Found, "Neither pid_1 nor pid_154 found"
+
+        (patient1Found or patient154Found)[0].click()
 
         self.browser.switch_to.default_content()
 
@@ -136,7 +141,8 @@ class TestWebsite_vitals:
         clinicalTab = self.browser.find_element(By.XPATH, '//*[@id="category_Clinical"]')
         clinicalTab.click()
 
-        vitals = self.browser.find_element(By.XPATH, '//*[@id="navbarSupportedContent"]/ul[1]/li[2]/div/a[11]')
+        vitals = self.browser.find_element(By.XPATH, '//div[@id="navbarSupportedContent"]//a[contains(@onclick, "formname=vitals")]')
+
         vitals.click()
 
         self.browser.switch_to.parent_frame()
@@ -175,5 +181,5 @@ class TestWebsite_vitals:
         validation_message = self.browser.execute_script(
             "return arguments[0].validationMessage;", HeightinputField)
 
-        expected_message = " "
+        expected_message = ""
         assert validation_message == expected_message

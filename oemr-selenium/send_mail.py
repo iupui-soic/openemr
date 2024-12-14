@@ -6,7 +6,7 @@ recipients = ['abc@mail.com','xyz@mail.com']
 recipient_string = ",".join(recipients)
 
 # Path to the HTML file you want to attach
-html_file_path = '/home/mkokkala/oemr_selemium/openemr/oemr-selenium/reports/report.html'
+html_file_path = '/home/ksunchu/openemr/oemr-selenium/reports/report.html'
 
 current_time = datetime.now()
 
