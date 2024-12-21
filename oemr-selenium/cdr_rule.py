@@ -29,11 +29,11 @@ class TestWebsite_cdr_rule:
         self.browser.quit()
 
     # This test will only run for admin user
-    @pytest.mark.parametrize("server_name, url, username, password", read_admin_configurations_from_file("secret.json"))
-    def test_cdr_rule_validation(self, server_name, url, username, password):
-        # Pass server_name to the login function
-        success = login(self.browser, username, password, url, server_name)
-        assert success, f"Login failed for server {server_name}"
+    @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
+    def test_cdr_rule_validation(self, config):
+        # Log in to the server using the credentials
+        success = login(self.browser, config.username, config.password, config.url, config.server_name)
+        assert success, f"Login failed for server {config.url}"
 
         adminMenu = self.browser.find_element(By.XPATH, '//*[@id="mainMenu"]/div/div[10]/div/div')
 
