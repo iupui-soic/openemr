@@ -1,25 +1,46 @@
 import json
 
 from selenium.webdriver.common.by import By
+import json
+from dataclasses import dataclass
+from typing import List
 
+
+
+
+@dataclass
+class ServerConfig:
+    server_name: str
+    url: str
+    username: str
+    password: str
+
+    def __repr__(self):
+        # Only show server name in test output, hide credentials
+        return f"ServerConfig(server={self.url})"
 
 def read_configurations_from_file(file_path):
     with open(file_path, 'r') as json_file:
         data = json.load(json_file)
 
     configurations = []
-
     for server_name, user_data in data["SERVERS"].items():
-        url_value = user_data['url']
+        url = user_data['url']
         users = user_data['users']
 
         for user in users:
-            username = user['username']
-            password = user['password']
-            configurations.append((server_name, url_value, username, password))
+            config = ServerConfig(
+                server_name=server_name,
+                url=url,
+                username=user['username'],
+                password=user['password']
+            )
+            configurations.append(config)
 
     return configurations
 
+def sanitize_test_name(config: ServerConfig):
+    return f"server-{config.url}"
 
 def read_urls_from_file(file_path):
     with open(file_path, 'r') as json_file:

@@ -23,10 +23,10 @@ class TestWebsite_patient_search:
         self.browser.close()
         self.browser.quit()
 
-    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
-    def test_search_found_patient_using_search_bar(self, server_name, url, username, password):
-        success = login(self.browser, username, password, url, server_name)
-        assert success, "Login failed"
+    @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
+    def test_search_found_patient_using_search_bar(self, config):
+        success = login(self.browser, config.username, config.password, config.url, config.server_name)
+        assert success, f"Login failed for server {config.url}"
 
         self.browser.find_element(By.ID, 'anySearchBox').send_keys('Abdul')
         self.browser.find_element(By.ID, 'search_globals').click()
@@ -43,10 +43,10 @@ class TestWebsite_patient_search:
         patient154Found = self.browser.find_elements(By.ID, "pid_154")
         assert patient1Found or patient154Found, "Neither pid_1 nor pid_154 found"
 
-    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
-    def test_search_not_found_patient_using_search_bar(self, server_name, url, username, password):
-        success = login(self.browser, username, password, url, server_name)
-        assert success, "Login failed"
+    @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
+    def test_search_not_found_patient_using_search_bar(self, config):
+        success = login(self.browser, config.username, config.password, config.url, config.server_name)
+        assert success, f"Login failed for server {config.url}"
 
         self.browser.find_element(By.ID, 'anySearchBox').clear()
         self.browser.find_element(By.ID, 'anySearchBox').send_keys('Xyz')
@@ -60,10 +60,10 @@ class TestWebsite_patient_search:
 
         assert not len(self.browser.find_elements(By.ID, "pid_1")) and not len(self.browser.find_elements(By.ID, "pid_154"))
 
-    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
-    def test_search_found_patient_using_finder(self, server_name, url, username, password):
-        success = login(self.browser, username, password, url, server_name)
-        assert success, "Login failed"
+    @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
+    def test_search_found_patient_using_finder(self, config):
+        success = login(self.browser, config.username, config.password, config.url, config.server_name)
+        assert success, f"Login failed for server {config.url}"
 
         hamburger_menu = self.browser.find_element(By.XPATH, '//*[@id="mainBox"]/nav/button')
         hamburger_menu. click()
@@ -86,10 +86,10 @@ class TestWebsite_patient_search:
         patient154Found = self.browser.find_elements(By.ID, "pid_154")
         assert patient1Found or patient154Found, "Neither pid_1 nor pid_154 found"
 
-    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
-    def test_search_not_found_patient_using_finder(self, server_name, url, username, password):
-        success = login(self.browser, username, password, url, server_name)
-        assert success, "Login failed"
+    @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
+    def test_search_not_found_patient_using_finder(self, config):
+        success = login(self.browser, config.username, config.password, config.url, config.server_name)
+        assert success, f"Login failed for server {config.url}"
 
         hamburger_menu = self.browser.find_element(By.XPATH, '//*[@id="mainBox"]/nav/button')
         hamburger_menu.click()

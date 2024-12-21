@@ -30,10 +30,10 @@ class TestWebsite_vitals:
         self.browser.close()
         self.browser.quit()
 
-    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
-    def test_vitals_is_present_on_patient_dashboard(self, server_name, url, username, password):
-        success = login(self.browser, username, password, url, server_name)
-        assert success, f"Login failed for server {server_name}"
+    @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
+    def test_vitals_is_present_on_patient_dashboard(self, config):
+        success = login(self.browser, config.username, config.password, config.url, config.server_name)
+        assert success, f"Login failed for server {config.url}"
 
         self.browser.find_element(By.ID, 'anySearchBox').send_keys('Abdul')
         self.browser.find_element(By.ID, 'search_globals').click()
@@ -91,10 +91,10 @@ class TestWebsite_vitals:
             except NoSuchElementException:
                 pass
 
-    @pytest.mark.parametrize("server_name, url, username, password", read_configurations_from_file("secret.json"))
-    def test_vitals_validation_in_encounters(self, server_name, url, username, password):
-        success = login(self.browser, username, password, url, server_name)
-        assert success, f"Login failed for server {server_name}"
+    @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
+    def test_vitals_validation_in_encounters(self, config):
+        success = login(self.browser, config.username, config.password, config.url, config.server_name)
+        assert success, f"Login failed for server {config.url}"
 
         self.browser.find_element(By.ID, 'anySearchBox').send_keys('Abdul')
         self.browser.find_element(By.ID, 'search_globals').click()
