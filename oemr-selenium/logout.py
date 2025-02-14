@@ -30,13 +30,16 @@ class TestWebsite_logout:
     def test_logout(self, config):
         success = login(self.browser, config.username, config.password, config.url, config.server_name)
         assert success, f"Login failed for server {config.url}"
+        wait_for_page_load(self.browser)
 
         # Click the username/profile icon
         self.browser.find_element(By.ID, 'username').click()
+        wait_for_page_load(self.browser)
 
         # Find and click the logout button
         logout_element = self.browser.find_element(By.XPATH, '//li[@class="menuLabel"][last()]')
         logout_element.click()
+        wait_for_page_load(self.browser)
 
         # Wait for the URL to change to the expected login URL
         expected_url = config.url

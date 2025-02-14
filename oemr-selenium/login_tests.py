@@ -20,7 +20,7 @@ class TestWebsite_login:
         self.browser = webdriver.Chrome(options=options)
         self.browser.maximize_window()
         self.browser.implicitly_wait(10)
-        yield  # This allows the subsequent test methods to run
+        yield
         self.browser.close()
         self.browser.quit()
 
@@ -28,14 +28,17 @@ class TestWebsite_login:
     def test_valid_admin_and_user_credentials(self, config):
         success = login(self.browser, config.username, config.password, config.url, config.server_name)
         assert success, f"Login failed for server {config.url}"
+        wait_for_page_load(self.browser)
 
     @pytest.mark.parametrize("url", read_urls_from_file("secret.json"))
     def test_invalid_credentials(self, url):
         self.browser.get(url)
+        wait_for_page_load(self.browser)
 
         self.browser.find_element(By.ID, 'authUser').send_keys("abc")
         self.browser.find_element(By.ID, "clearPass").send_keys("abc")
         self.browser.find_element(By.ID, "login-button").submit()
+        wait_for_page_load(self.browser)
 
         # Try both XPaths for the error message
         error_message_element = None
