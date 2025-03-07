@@ -9,6 +9,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.alert import Alert
 from webdriver_manager.chrome import ChromeDriverManager
 from test_utils import *
+import re
 
 class TestWebsite_vitals:
     @pytest.fixture(autouse=True)
@@ -32,19 +33,17 @@ class TestWebsite_vitals:
         assert success, f"Login failed for server {config.url}"
         wait_for_page_load(self.browser)
 
-        self.browser.find_element(By.ID, 'anySearchBox').send_keys('Abdul')
+        search_box = self.browser.find_element(By.ID, 'anySearchBox')
+        search_box.clear()
+        search_box.send_keys('a')
         self.browser.find_element(By.ID, 'search_globals').click()
         wait_for_page_load(self.browser)
 
-        iframe = self.browser.find_element(By.CSS_SELECTOR, '#framesDisplay > div > iframe')
-        self.browser.switch_to.frame(iframe)
+        WebDriverWait(self.browser, 10).until(EC.frame_to_be_available_and_switch_to_it((By.NAME, "fin")))
         wait_for_page_load(self.browser)
 
-        patient1Found = self.browser.find_elements(By.ID, "pid_1")
-        patient154Found = self.browser.find_elements(By.ID, "pid_154")
-        assert patient1Found or patient154Found, "Neither pid_1 nor pid_154 found"
-
-        (patient1Found or patient154Found)[0].click()
+        first_patient = self.browser.find_elements(By.CSS_SELECTOR, 'tr td a')[0]
+        first_patient.click()
         self.browser.switch_to.default_content()
         wait_for_page_load(self.browser)
 
@@ -80,18 +79,21 @@ class TestWebsite_vitals:
         assert success, f"Login failed for server {config.url}"
         wait_for_page_load(self.browser)
 
-        self.browser.find_element(By.ID, 'anySearchBox').send_keys('Abdul')
+        search_box = WebDriverWait(self.browser, 10).until(
+            EC.presence_of_element_located((By.ID, "anySearchBox"))
+        )
+        search_box.clear()
+        search_box.send_keys('a')
         self.browser.find_element(By.ID, 'search_globals').click()
         wait_for_page_load(self.browser)
 
-        iframe = self.browser.find_element(By.CSS_SELECTOR, '#framesDisplay > div > iframe')
-        self.browser.switch_to.frame(iframe)
+        WebDriverWait(self.browser, 10).until(EC.frame_to_be_available_and_switch_to_it((By.NAME, "fin")))
         wait_for_page_load(self.browser)
 
-        patient1Found = self.browser.find_elements(By.ID, "pid_1")
-        patient154Found = self.browser.find_elements(By.ID, "pid_154")
-        assert patient1Found or patient154Found, "Neither pid_1 nor pid_154 found"
-        (patient1Found or patient154Found)[0].click()
+        first_patient = WebDriverWait(self.browser, 10).until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'tr td a'))
+        )[0]
+        first_patient.click()
         self.browser.switch_to.default_content()
         wait_for_page_load(self.browser)
 

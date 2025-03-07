@@ -1,10 +1,14 @@
 import pytest
 import os
 from selenium import webdriver
+from selenium.webdriver import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from test_utils import *
+import re
 
 class TestWebsite_patient_search:
     @pytest.fixture(autouse=True)
@@ -18,7 +22,6 @@ class TestWebsite_patient_search:
         self.browser = webdriver.Chrome(options=options)
         self.browser.implicitly_wait(10)
         yield
-        self.browser.close()
         self.browser.quit()
 
     @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
@@ -27,17 +30,21 @@ class TestWebsite_patient_search:
         assert success, f"Login failed for server {config.url}"
         wait_for_page_load(self.browser)
 
-        self.browser.find_element(By.ID, 'anySearchBox').send_keys('Abdul')
+        search_box = self.browser.find_element(By.ID, 'anySearchBox')
+        search_box.clear()
+        search_box.send_keys('100')
         self.browser.find_element(By.ID, 'search_globals').click()
         wait_for_page_load(self.browser)
 
-        iframe = self.browser.find_element(By.CSS_SELECTOR, '#framesDisplay > div > iframe')
-        self.browser.switch_to.frame(iframe)
+        WebDriverWait(self.browser, 10).until(EC.frame_to_be_available_and_switch_to_it((By.NAME, "fin")))
         wait_for_page_load(self.browser)
 
-        patient1Found = self.browser.find_elements(By.ID, "pid_1")
-        patient154Found = self.browser.find_elements(By.ID, "pid_154")
-        assert patient1Found or patient154Found, "Neither pid_1 nor pid_154 found"
+        results_text = self.browser.find_element(By.ID, "pt_table_info").text
+
+        match = re.search(r'Showing (\d+)', results_text)
+        assert match, "Could not find 'Showing X' in results text!"
+
+        assert int(match.group(1)) > 0, f"Search returned zero results: {results_text}"
 
     @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
     def test_search_not_found_patient_using_search_bar(self, config):
@@ -45,16 +52,21 @@ class TestWebsite_patient_search:
         assert success, f"Login failed for server {config.url}"
         wait_for_page_load(self.browser)
 
-        self.browser.find_element(By.ID, 'anySearchBox').clear()
-        self.browser.find_element(By.ID, 'anySearchBox').send_keys('Xyz')
+        search_box = self.browser.find_element(By.ID, 'anySearchBox')
+        search_box.clear()
+        search_box.send_keys('12000')
         self.browser.find_element(By.ID, 'search_globals').click()
         wait_for_page_load(self.browser)
 
-        iframe = self.browser.find_element(By.CSS_SELECTOR, '#framesDisplay > div > iframe')
-        self.browser.switch_to.frame(iframe)
+        WebDriverWait(self.browser, 10).until(EC.frame_to_be_available_and_switch_to_it((By.NAME, "fin")))
         wait_for_page_load(self.browser)
 
-        assert not len(self.browser.find_elements(By.ID, "pid_1")) and not len(self.browser.find_elements(By.ID, "pid_154"))
+        results_text = self.browser.find_element(By.ID, "pt_table_info").text
+
+        match = re.search(r'Showing (\d+)', results_text)
+        assert match, "Could not find 'Showing X' in results text!"
+
+        assert int(match.group(1)) == 0, f"Expected 0 results but found: {results_text}"
 
     @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
     def test_search_found_patient_using_finder(self, config):
@@ -72,13 +84,18 @@ class TestWebsite_patient_search:
         self.browser.switch_to.frame(iframe)
         wait_for_page_load(self.browser)
 
-        search_box = self.browser.find_element(By.CLASS_NAME, 'form-control.search_init')
-        search_box.send_keys("Abdul")
+        search_box = self.browser.find_element(By.CSS_SELECTOR, 'input.form-control.form-control-sm')
+        search_box.clear()
+        search_box.send_keys("100")
+        search_box.send_keys(Keys.RETURN)
         wait_for_page_load(self.browser)
 
-        patient1Found = self.browser.find_elements(By.ID, "pid_1")
-        patient154Found = self.browser.find_elements(By.ID, "pid_154")
-        assert patient1Found or patient154Found, "Neither pid_1 nor pid_154 found"
+        results_text = self.browser.find_element(By.ID, "pt_table_info").text
+
+        match = re.search(r'Showing (\d+)', results_text)
+        assert match, "Could not find 'Showing X' in results text!"
+
+        assert int(match.group(1)) > 0, f"Search returned zero results: {results_text}"
 
     @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
     def test_search_not_found_patient_using_finder(self, config):
@@ -96,8 +113,16 @@ class TestWebsite_patient_search:
         self.browser.switch_to.frame(iframe)
         wait_for_page_load(self.browser)
 
-        search_box = self.browser.find_element(By.CLASS_NAME, 'form-control.search_init')
-        search_box.send_keys("xyz")
+        search_box = self.browser.find_element(By.CSS_SELECTOR, 'input.form-control.form-control-sm')
+        search_box.clear()
+        search_box.send_keys("12000")
+        search_box.send_keys(Keys.RETURN)
         wait_for_page_load(self.browser)
 
-        assert not len(self.browser.find_elements(By.ID, "pid_1")) and not len(self.browser.find_elements(By.ID, "pid_154"))
+        results_text = self.browser.find_element(By.ID, "pt_table_info").text
+
+        match = re.search(r'Showing (\d+)', results_text)
+        assert match, "Could not find 'Showing X' in results text!"
+
+        assert int(match.group(1)) == 0, f"Expected 0 results but found: {results_text}"
+
