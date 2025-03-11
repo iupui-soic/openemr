@@ -97,8 +97,32 @@ class TestWebsite_vitals:
         self.browser.switch_to.default_content()
         wait_for_page_load(self.browser)
 
-        pastEncounters = self.browser.find_element(By.ID, "pastEncounters")
-        pastEncounters.click()
+        try:
+            pastEncounters = WebDriverWait(self.browser, 5).until(
+                EC.element_to_be_clickable((By.ID, "pastEncounters"))
+            )
+            pastEncounters.click()
+        except Exception as e:
+            print(f"'Past Encounters' was blocked, checking for popups...")
+
+            try:
+                WebDriverWait(self.browser, 3).until(EC.presence_of_element_located((By.ID, "modalframe")))
+                self.browser.switch_to.frame("modalframe")
+
+                close_button = WebDriverWait(self.browser, 5).until(
+                    EC.element_to_be_clickable((By.ID, "close"))
+                )
+                close_button.click()
+                self.browser.switch_to.default_content()
+                wait_for_page_load(self.browser)
+
+                pastEncounters = WebDriverWait(self.browser, 5).until(
+                    EC.element_to_be_clickable((By.ID, "pastEncounters"))
+                )
+                pastEncounters.click()
+            except (NoSuchElementException, TimeoutException):
+                pass
+
         wait_for_page_load(self.browser)
 
         latestEncounter = self.browser.find_element(By.XPATH, '//*[@id="attendantData"]/div/div[2]/div[1]/div/ul/li[1]/a[1]')
@@ -143,3 +167,4 @@ class TestWebsite_vitals:
         validation_message = self.browser.execute_script(
             "return arguments[0].validationMessage;", HeightinputField)
         assert validation_message == ""
+
