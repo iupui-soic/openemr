@@ -25,7 +25,7 @@ class TestWebsite_patient_search:
         self.browser.quit()
 
     @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
-    def test_search_found_patient_using_search_bar(self, config):
+    def test_search_found_ssn_using_search_bar(self, config):
         success = login(self.browser, config.username, config.password, config.url, config.server_name)
         assert success, f"Login failed for server {config.url}"
         wait_for_page_load(self.browser)
@@ -47,7 +47,7 @@ class TestWebsite_patient_search:
         assert int(match.group(1)) > 0, f"Search returned zero results: {results_text}"
 
         first_row = self.browser.find_element(By.CSS_SELECTOR, "#pt_table tbody tr")
-        ssn_pattern = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")  # SSN format: 123-45-6789
+        ssn_pattern = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
 
         if ssn_pattern.search(first_row.text):
             print("SSN found in the first row.")
