@@ -28,53 +28,7 @@ class TestWebsite_vitals:
         self.browser.quit()
 
     @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
-    def test_vitals_is_present_on_patient_dashboard(self, config):
-        success = login(self.browser, config.username, config.password, config.url, config.server_name)
-        assert success, f"Login failed for server {config.url}"
-        wait_for_page_load(self.browser)
-
-        search_box = self.browser.find_element(By.ID, 'anySearchBox')
-        search_box.clear()
-        search_box.send_keys('a')
-        self.browser.find_element(By.ID, 'search_globals').click()
-        wait_for_page_load(self.browser)
-
-        WebDriverWait(self.browser, 10).until(EC.frame_to_be_available_and_switch_to_it((By.NAME, "fin")))
-        wait_for_page_load(self.browser)
-
-        first_patient = self.browser.find_elements(By.CSS_SELECTOR, 'tr td a')[0]
-        first_patient.click()
-        self.browser.switch_to.default_content()
-        wait_for_page_load(self.browser)
-
-        iframe = self.browser.find_element(By.CSS_SELECTOR, '#framesDisplay > div > iframe')
-        self.browser.switch_to.frame(iframe)
-        wait_for_page_load(self.browser)
-
-        container_div = self.browser.find_element(By.ID, 'container_div')
-        main_divs = container_div.find_elements(By.CLASS_NAME, 'main.mb-5')
-        for div in main_divs:
-            try:
-                class_row = div.find_element(By.CLASS_NAME, 'row')
-                card_sections = class_row.find_elements(By.CSS_SELECTOR, 'section.card.mb-2')
-                if card_sections:
-                    last_card_section = card_sections[-1]
-                    vitals_expand_div = last_card_section.find_element(By.ID, 'vitals_ps_expand')
-                    link_to_click = vitals_expand_div.find_element(By.PARTIAL_LINK_TEXT,
-                                                                   'Click here to view and graph all vitals.')
-                    link_to_click.click()
-                    wait_for_page_load(self.browser)
-                    try:
-                        alert = Alert(self.browser)
-                        alert.accept()
-                    except NoAlertPresentException:
-                        pass
-                    break
-            except NoSuchElementException:
-                pass
-
-    @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
-    def test_vitals_validation_in_encounters(self, config):
+    def test_clinical_notes_is_present_in_encounters(self, config):
         success = login(self.browser, config.username, config.password, config.url, config.server_name)
         assert success, f"Login failed for server {config.url}"
         wait_for_page_load(self.browser)
