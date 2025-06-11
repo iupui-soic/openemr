@@ -1,3 +1,4 @@
+import time
 import pytest
 import os
 from selenium import webdriver
@@ -138,6 +139,8 @@ class TestWebsite_vitals:
         wait_for_page_load(self.browser)
 
         clinicalTab = self.browser.find_element(By.XPATH, '//*[@id="category_Clinical"]')
+        self.browser.execute_script("arguments[0].scrollIntoView(true);", clinicalTab)
+        time.sleep(1)
         clinicalTab.click()
         wait_for_page_load(self.browser)
 
