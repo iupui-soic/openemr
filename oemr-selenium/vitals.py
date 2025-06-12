@@ -139,9 +139,15 @@ class TestWebsite_vitals:
         wait_for_page_load(self.browser)
 
         clinicalTab = self.browser.find_element(By.XPATH, '//*[@id="category_Clinical"]')
-        self.browser.execute_script("arguments[0].scrollIntoView(true);", clinicalTab)
-        time.sleep(1)
-        clinicalTab.click()
+        self.browser.execute_script("arguments[0].scrollIntoView({block: 'center'});", clinicalTab)
+        WebDriverWait(self.browser, 5).until(
+        EC.element_to_be_clickable((By.XPATH, '//*[@id="category_Clinical"]'))
+        )
+        try:
+            clinicalTab.click()
+        except Exception:
+            from selenium.webdriver.common.action_chains import ActionChains
+            ActionChains(self.browser).move_to_element(clinicalTab).click().perform()
         wait_for_page_load(self.browser)
 
         vitals = self.browser.find_element(By.XPATH, '//div[@id="navbarSupportedContent"]//a[contains(@onclick, "formname=vitals")]')
