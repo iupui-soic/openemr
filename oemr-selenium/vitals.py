@@ -1,4 +1,3 @@
-import time
 import pytest
 import os
 from selenium import webdriver
@@ -19,6 +18,7 @@ class TestWebsite_vitals:
         if os.environ.get('HEADLESS', 'false').lower() == 'true':
             options.add_argument("--headless")
             options.add_argument("--no-sandbox")
+            options.add_argument('--window-size=1920,1080')
             options.add_argument("--disable-dev-shm-usage")
 
         self.browser = webdriver.Chrome(options=options)
@@ -121,8 +121,8 @@ class TestWebsite_vitals:
                     EC.element_to_be_clickable((By.ID, "pastEncounters"))
                 )
                 pastEncounters.click()
-            except (NoSuchElementException, TimeoutException):
-                pass
+            except (NoSuchElementException, TimeoutException) as e:
+                print(e)
 
         wait_for_page_load(self.browser)
 
@@ -139,15 +139,7 @@ class TestWebsite_vitals:
         wait_for_page_load(self.browser)
 
         clinicalTab = self.browser.find_element(By.XPATH, '//*[@id="category_Clinical"]')
-        self.browser.execute_script("arguments[0].scrollIntoView({block: 'center'});", clinicalTab)
-        WebDriverWait(self.browser, 5).until(
-        EC.element_to_be_clickable((By.XPATH, '//*[@id="category_Clinical"]'))
-        )
-        try:
-            clinicalTab.click()
-        except Exception:
-            from selenium.webdriver.common.action_chains import ActionChains
-            ActionChains(self.browser).move_to_element(clinicalTab).click().perform()
+        clinicalTab.click()
         wait_for_page_load(self.browser)
 
         vitals = self.browser.find_element(By.XPATH, '//div[@id="navbarSupportedContent"]//a[contains(@onclick, "formname=vitals")]')
