@@ -10,19 +10,9 @@ from test_utils import *
 
 class TestWebsite_login:
     @pytest.fixture(autouse=True)
-    def login_page_setup(self):
-        options = Options()
-        if os.environ.get('HEADLESS', 'false').lower() == 'true':
-            options.add_argument("--headless")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-
-        self.browser = webdriver.Chrome(options=options)
-        self.browser.maximize_window()
-        self.browser.implicitly_wait(10)
-        yield
-        self.browser.close()
-        self.browser.quit()
+    def setup_browser(self, browser_fixture):
+        # self.browser is set via shared browser_fixture in test_utils.py
+        pass
 
     @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
     def test_valid_admin_and_user_credentials(self, config):

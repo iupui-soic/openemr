@@ -3,6 +3,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from dataclasses import dataclass
 from typing import List
+import os
+import pytest
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
 
 @dataclass
 class ServerConfig:
@@ -78,3 +83,21 @@ def wait_for_page_load(driver, timeout=30):
     WebDriverWait(driver, timeout).until(
         lambda d: d.execute_script('return typeof jQuery == "undefined" || jQuery.active == 0')
     )
+
+def init_browser():
+    options = Options()
+    if os.environ.get('HEADLESS', 'false').lower() == 'true':
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+    browser = webdriver.Chrome(options=options)
+    browser.maximize_window()
+    browser.implicitly_wait(10)
+    return browser
+
+@pytest.fixture
+def browser_fixture(request):
+    browser = init_browser()
+    request.instance.browser = browser
+    yield
+    browser.quit()

@@ -12,17 +12,10 @@ import re
 
 class TestWebsite_patient_search:
     @pytest.fixture(autouse=True)
-    def browser_setup_and_teardown(self):
-        options = Options()
-        if os.environ.get('HEADLESS', 'false').lower() == 'true':
-            options.add_argument("--headless")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
+    def setup_browser(self, browser_fixture):
+        # self.browser is set via shared browser_fixture in test_utils.py
+        pass
 
-        self.browser = webdriver.Chrome(options=options)
-        self.browser.implicitly_wait(10)
-        yield
-        self.browser.quit()
 
     @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
     def test_search_found_patient_using_search_bar(self, config):
@@ -74,8 +67,6 @@ class TestWebsite_patient_search:
         assert success, f"Login failed for server {config.url}"
         wait_for_page_load(self.browser)
 
-        self.browser.find_element(By.XPATH, '//*[@id="mainBox"]/nav/button').click()
-        wait_for_page_load(self.browser)
 
         self.browser.find_element(By.XPATH, '//div[@class="menuLabel px-1" and text()="Finder"]').click()
         wait_for_page_load(self.browser)
@@ -101,9 +92,6 @@ class TestWebsite_patient_search:
     def test_search_not_found_patient_using_finder(self, config):
         success = login(self.browser, config.username, config.password, config.url, config.server_name)
         assert success, f"Login failed for server {config.url}"
-        wait_for_page_load(self.browser)
-
-        self.browser.find_element(By.XPATH, '//*[@id="mainBox"]/nav/button').click()
         wait_for_page_load(self.browser)
 
         self.browser.find_element(By.XPATH, '//div[@class="menuLabel px-1" and text()="Finder"]').click()
