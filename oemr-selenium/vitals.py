@@ -112,8 +112,8 @@ class TestWebsite_vitals:
                     EC.element_to_be_clickable((By.ID, "pastEncounters"))
                 )
                 pastEncounters.click()
-            except (NoSuchElementException, TimeoutException):
-                pass
+            except (NoSuchElementException, TimeoutException) as e:
+                print("Modal not found or timed out")
 
         wait_for_page_load(self.browser)
 
