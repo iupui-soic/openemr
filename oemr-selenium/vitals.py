@@ -10,6 +10,7 @@ from selenium.webdriver.common.alert import Alert
 from webdriver_manager.chrome import ChromeDriverManager
 from test_utils import *
 import re
+from selenium.common.exceptions import TimeoutException
 
 class TestWebsite_vitals:
 
@@ -17,7 +18,6 @@ class TestWebsite_vitals:
     def setup_browser(self, browser_fixture):
         # Shared setup from test_utils.py — provides self.browser
         pass
-
 
     @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
     def test_vitals_is_present_on_patient_dashboard(self, config):
