@@ -13,19 +13,7 @@ import re
 
 class TestWebsite_vitals:
     @pytest.fixture(autouse=True)
-    def browser_setup_and_teardown(self):
-        options = Options()
-        if os.environ.get('HEADLESS', 'false').lower() == 'true':
-            options.add_argument("--headless")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-
-        self.browser = webdriver.Chrome(options=options)
-        self.browser.maximize_window()
-        self.browser.implicitly_wait(10)
-        yield
-        self.browser.close()
-        self.browser.quit()
+    def setup_browser(self): yield from browser_setup_and_teardown(self)
 
     @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
     def test_clinical_notes_is_present_in_encounters(self, config):

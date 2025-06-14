@@ -15,9 +15,7 @@ from selenium.common.exceptions import TimeoutException
 class TestWebsite_vitals:
 
     @pytest.fixture(autouse=True)
-    def setup_browser(self, browser_fixture):
-        # Shared setup from test_utils.py — provides self.browser
-        pass
+    def setup_browser(self): yield from browser_setup_and_teardown(self)
 
     @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
     def test_vitals_is_present_on_patient_dashboard(self, config):
@@ -113,7 +111,7 @@ class TestWebsite_vitals:
                 )
                 pastEncounters.click()
             except (NoSuchElementException, TimeoutException) as e:
-                print("Modal not found or timed out")
+                logging.error("Modal not found or timed out")
 
         wait_for_page_load(self.browser)
 

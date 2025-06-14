@@ -84,21 +84,18 @@ def wait_for_page_load(driver, timeout=30):
         lambda d: d.execute_script('return typeof jQuery == "undefined" || jQuery.active == 0')
     )
 
-def init_browser():
+def browser_setup_and_teardown(test_instance):
     options = Options()
     if os.environ.get('HEADLESS', 'false').lower() == 'true':
         options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument('--window-size=1920,1080')
         options.add_argument("--disable-dev-shm-usage")
+
     browser = webdriver.Chrome(options=options)
     browser.maximize_window()
     browser.implicitly_wait(10)
-    return browser
-
-@pytest.fixture
-def browser_fixture(request):
-    browser = init_browser()
-    request.instance.browser = browser
+    test_instance.browser = browser
     yield
+    browser.close()
     browser.quit()

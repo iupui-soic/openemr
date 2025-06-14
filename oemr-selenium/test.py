@@ -13,8 +13,10 @@ class TestWebsite:
     # 3. Test report will be created in reports/ directory
 
     @pytest.fixture(autouse=True)
-    def setup_browser(self, browser_fixture):
-        # Shared setup from test_utils.py – sets self.browser
+    def setup_browser(self):
+        yield from browser_setup_and_teardown(self)
+
+        # Now that browser is ready, do login
         self.browser.get("https://in-info-web18.luddy.indianapolis.iu.edu/interface/login/login.php?site=default")
         self.browser.find_element(By.ID, 'authUser').send_keys(get_user())
         self.browser.find_element(By.ID, "clearPass").send_keys(get_pass())

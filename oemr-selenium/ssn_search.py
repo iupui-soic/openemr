@@ -12,9 +12,7 @@ import re
 
 class TestWebsite_patient_search:
     @pytest.fixture(autouse=True)
-    def setup_browser(self, browser_fixture):
-        # self.browser is set via shared browser_fixture in test_utils.py
-        pass
+    def setup_browser(self): yield from browser_setup_and_teardown(self)
 
     @pytest.mark.parametrize("config", read_configurations_from_file("secret.json"), ids=sanitize_test_name)
     def test_search_found_ssn_using_search_bar(self, config):
