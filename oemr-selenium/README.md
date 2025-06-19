@@ -30,16 +30,16 @@
    - Install `py`: `pip install py`
    - Install `selenium`: `pip install selenium`
    - Install ` webdriver-manager`: `pip install webdriver-manager`
-   - [Ununtu only] Download `chrome stable package`: `wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb`
-   - [Ununtu only] Install `google-chrome`: `dpkg -i google-chrome-stable_current_amd64.deb`
+   - [Ubuntu only] Download `chrome stable package`: `wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb`
+   - [Ubuntu only] Install `google-chrome`: `dpkg -i google-chrome-stable_current_amd64.deb`
 
 4. **If using another IDE/Environment:**
    - Activate the virtual environment (venv).
    - Install Pytest: `pip install pytest`
    - Install `py`: `pip install py`
 
-5. **To genrate reports on Windows, run:**
+5. **To generate reports on Windows, run:**
    - `python -m pytest .\file_name.py --html=reports/report.html`
 
-6. **To genrate reports Ubuntu, run:**
+6. **To generate reports Ubuntu, run:**
    - ` HEADLESS=true python -m pytest .\file_name.py --html=reports/report.html`

@@ -51,9 +51,12 @@ class TestBPValues:
 
         self.browser.switch_to.frame(self.browser.find_element(By.XPATH, '//*[@id="framesDisplay"]/div[3]/iframe'))
         self.browser.switch_to.frame(self.browser.find_element(By.XPATH, '//*[@id="enctabs-1"]/iframe'))
-        self.browser.find_element(By.XPATH, '//*[@id="category_Clinical"]').click()
+        clinicalTab = self.browser.find_element(By.XPATH, '//*[@id="category_Clinical"]')
+        self.browser.execute_script("arguments[0].click();", clinicalTab)
         wait_for_page_load(self.browser)
-        self.browser.find_element(By.XPATH, '//div[@id="navbarSupportedContent"]//a[contains(@onclick, "formname=vitals")]').click()
+
+        vitals = self.browser.find_element(By.XPATH, '//div[@id="navbarSupportedContent"]//a[contains(@onclick, "formname=vitals")]')
+        self.browser.execute_script("arguments[0].click();", vitals)
         wait_for_page_load(self.browser)
         self.browser.switch_to.parent_frame()
         self.browser.switch_to.frame(self.browser.find_element(By.XPATH, '//*[@id="enctabs-1001"]/iframe'))

@@ -34,14 +34,18 @@ class TestWebsite_cdr_rule:
         wait_for_page_load(self.browser)
 
         adminMenu = self.browser.find_element(By.XPATH, '//*[@id="mainMenu"]/div/div[10]/div/div')
-        actions = ActionChains(self.browser)
-        actions.move_to_element(adminMenu).perform()
+        hover_script = """
+            var element = arguments[0];
+            var event = new MouseEvent('mouseover', {bubbles: true, cancelable: true});
+            element.dispatchEvent(event);
+            """
+        self.browser.execute_script(hover_script, adminMenu)
         wait_for_page_load(self.browser)
 
         practiceMenu = self.browser.find_element(By.XPATH, '//*[@id="mainMenu"]/div/div[10]/div/ul/li[4]/div/div')
-        actions.move_to_element(practiceMenu).perform()
+        self.browser.execute_script(hover_script, practiceMenu)
         wait_for_page_load(self.browser)
 
         rules = self.browser.find_element(By.XPATH, '//*[@id="mainMenu"]/div/div[10]/div/ul/li[4]/div/ul/li[2]/div')
-        rules.click()
+        self.browser.execute_script("arguments[0].click();", rules)
         wait_for_page_load(self.browser)

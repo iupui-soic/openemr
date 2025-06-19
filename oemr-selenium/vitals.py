@@ -138,11 +138,11 @@ class TestWebsite_vitals:
         wait_for_page_load(self.browser)
 
         clinicalTab = self.browser.find_element(By.XPATH, '//*[@id="category_Clinical"]')
-        clinicalTab.click()
+        self.browser.execute_script("arguments[0].click();", clinicalTab)
         wait_for_page_load(self.browser)
 
         vitals = self.browser.find_element(By.XPATH, '//div[@id="navbarSupportedContent"]//a[contains(@onclick, "formname=vitals")]')
-        vitals.click()
+        self.browser.execute_script("arguments[0].click();", vitals)
         wait_for_page_load(self.browser)
 
         self.browser.switch_to.parent_frame()
