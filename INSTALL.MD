@@ -9,7 +9,7 @@
 - [The volumes are created and restored](#the-volumes-are-created-and-restored)
 - [Clone DevOps Repo](#clone-devops-repo)
 - [Docker Installation Recording (9/8/2023)](#docker-installation-recording-982023)
-- [Apache Configuration for HTTPS (if not done by David - University IT Person)](#apache-configuration-for-https-if-not-done-by-david)
+- [Apache Configuration for HTTPS (if not done by University IT Person)](#apache-configuration-for-https-if-not-done-by-david)
 
 ## Note: All the sudo commands should be run in your user account, and the docker and nano commands should be run in the oemr user account.
 
@@ -44,10 +44,10 @@ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
 If you face any issues while installing the docker then use the sudo reboot command
 (Create oemr user)
 ```bash
-sudo adduser oemr​
+sudo adduser oemr
 ```
-Enter your password​
-Click enter and If the information is correct. Click Y(yes).​
+Enter your password
+Click enter and If the information is correct. Click Y(yes).
 
 ## Create Docker user ($USER should be the superuser - oemr)
 ```bash
@@ -67,7 +67,7 @@ nano docker-compose.yml
 ```
 
 ## Create docker-compose
- 
+
 ```yaml
 # Use admin/pass as user/password credentials to login to openemr (from OE_USER and OE_PASS below)
 # MYSQL_HOST and MYSQL_ROOT_PASS are required for openemr
@@ -77,8 +77,8 @@ version: '3.1'
 services:
   mysql:
     restart: always
-    image: mariadb:10.6
-    command: ['mysqld','--character-set-server=utf8mb4']
+    image: mariadb:10.11
+    command: ['mysqld','--character-set-server=utf8mb4','--innodb_buffer_pool_size=12G']
     volumes:
     - oemr_databasevolume:/var/lib/mysql
     ports:
@@ -90,11 +90,9 @@ services:
     image: ghcr.io/iupui-soic/seiri22:latest
     ports:
     - 8080:80
-    #- 443:443
     volumes:
     - oemr_logvolume01:/var/log
     - oemr_sitevolume:/var/www/localhost/htdocs/openemr/sites
-    #- /home/oemr/openemr-devops/docker/openemr/flex-edge/utilities/:/root/
     environment:
       MYSQL_HOST: mysql
       MYSQL_ROOT_PASS: root
@@ -135,7 +133,7 @@ cd /var/lib/docker/volumes/
 ```
 use this command to check if the volumes already exist
 ```bash
-ls -al 
+ls -al
 ```
 Remove the volumes using this command if already exist, so that they can replaced by the new volumes
 ```bash
@@ -144,8 +142,8 @@ rm -Rf <filename>
 use your username in place of oemr
 ```bash
 cp -r /home/oemr/oemr_databasevolume oemr_databasevolume
-cp -r /home/oemr/oemr_logvolume01/ oemr_logvolume01
-cp -r /home/oemr/oemr_sitevolume/ oemr_sitevolume
+cp -r /home/oemr/oemr_logvolume01 oemr_logvolume01
+cp -r /home/oemr/oemr_sitevolume oemr_sitevolume
 
 chown -Rf oemr:root oemr_databasevolume/_data/
 chown -Rf oemr:root oemr_logvolume01/_data/
@@ -175,7 +173,7 @@ chown -Rf apache:root .
 ```
 exit
 
-## Clone devops repo 
+## Clone devops repo
 ```bash
 git clone https://github.com/openemr/openemr-devops
 chmod +x openemr-devops/docker/openemr/flex-edge/utilities/devtools
@@ -190,16 +188,16 @@ chmod +x ~/bin/openemr-cmd-h
 LOGOUT and LOGIN again
 
 video example
-## docker installation recording (9/8/2023) 
-https://iu.mediaspace.kaltura.com/media/t/1_qtdvsg1s 
+## docker installation recording (9/8/2023)
+https://iu.mediaspace.kaltura.com/media/t/1_qtdvsg1s
 
-## Apache configuration for HTTPS (if not done by David) 
+## Apache configuration for HTTPS (if not done by IT staff)
  enable http proxy
 ```bash
 sudo a2enmod proxy_http
 sudo nano /etc/apache2/sites-enabled/default-ssl.conf
 ```
- This is the configuration (remember to change the SSL certificate to correct server URL name) 
+ This is the configuration (remember to change the SSL certificate to correct server URL name)
 ```apache
 <IfModule mod_ssl.c>
   <VirtualHost _default_:443>
@@ -208,9 +206,9 @@ sudo nano /etc/apache2/sites-enabled/default-ssl.conf
     ErrorLog ${APACHE_LOG_DIR}/error.log
     CustomLog ${APACHE_LOG_DIR}/access.log combined
     SSLEngine on
-    SSLCertificateFile /etc/apache2/in-info-web19.luddy.iupui.edu.crt
-    SSLCertificateKeyFile /etc/apache2/in-info-web19.luddy.iupui.edu.key
-    SSLCertificateChainFile /etc/apache2/in-info-web19.luddy.iupui.edu.interm.crt
+    SSLCertificateFile /etc/apache2/in-info-web19.luddy.indianapolis.iu.edu.crt
+    SSLCertificateKeyFile /etc/apache2/in-info-web19.luddy.indianapolis.iu.edu.key
+    SSLCertificateChainFile /etc/apache2/in-info-web19.luddy.indianapolis.iu.edu.interm.crt
     <FilesMatch "\.(cgi|shtml|phtml|php)$">
       SSLOptions +StdEnvVars
     </FilesMatch>
