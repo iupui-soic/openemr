@@ -2,7 +2,6 @@
 
 import pytest
 import os
-import time
 from selenium import webdriver
 from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.options import Options
@@ -51,30 +50,27 @@ class TestWebsite_cdr_rule:
         self.browser.execute_script("arguments[0].click();", rules)
         wait_for_page_load(self.browser)
 
-        d = self.browser
-        time.sleep(1)
-
         pap_link = None
         try:
-            pap_link = d.find_element(By.PARTIAL_LINK_TEXT, "Pap Smear")
+            pap_link = self.browser.find_element(By.PARTIAL_LINK_TEXT, "Pap Smear")
         except:
-            frames = d.find_elements(By.TAG_NAME, "iframe")
+            frames = self.browser.find_elements(By.TAG_NAME, "iframe")
             for frame in frames:
                 try:
-                    d.switch_to.frame(frame)
-                    pap_link = d.find_element(By.PARTIAL_LINK_TEXT, "Pap Smear")
+                    self.browser.switch_to.frame(frame)
+                    pap_link = self.browser.find_element(By.PARTIAL_LINK_TEXT, "Pap Smear")
                     if pap_link:
                         break
                 except:
-                    d.switch_to.default_content()
+                    self.browser.switch_to.default_content()
 
         if not pap_link:
             raise AssertionError("Could not find Pap Smear link")
 
-        d.execute_script("arguments[0].click();", pap_link)
-        time.sleep(2)
+        self.browser.execute_script("arguments[0].click();", pap_link)
+        wait_for_page_load(self.browser)
 
-        page_text = d.find_element(By.TAG_NAME, "body").text
+        page_text = self.browser.find_element(By.TAG_NAME, "body").text
         assert "Cancer Screening: Pap Smear" in page_text or "Pap" in page_text, "Rule detail page not loaded"
         assert "Reminder" in page_text or "Clinical" in page_text, "Missing reminder information"
         assert "Female" in page_text or "Age" in page_text, "Missing criteria information"
@@ -82,102 +78,102 @@ class TestWebsite_cdr_rule:
         try:
             add_button = None
             try:
-                add_button = d.find_element(By.XPATH, "//button[contains(text(), 'add')]")
+                add_button = self.browser.find_element(By.XPATH, "//button[contains(text(), 'add')]")
             except:
                 try:
-                    add_button = d.find_element(By.XPATH, "//a[contains(text(), 'add')]")
+                    add_button = self.browser.find_element(By.XPATH, "//a[contains(text(), 'add')]")
                 except:
                     try:
-                        inclusion_section = d.find_element(By.XPATH, "//*[contains(text(), 'Inclusion/Exclusion')]")
+                        inclusion_section = self.browser.find_element(By.XPATH, "//*[contains(text(), 'Inclusion/Exclusion')]")
                         add_button = inclusion_section.find_element(By.XPATH, ".//following::*[contains(text(), 'add')][1]")
                     except:
-                        frames = d.find_elements(By.TAG_NAME, "iframe")
+                        frames = self.browser.find_elements(By.TAG_NAME, "iframe")
                         for frame in frames:
                             try:
-                                d.switch_to.frame(frame)
-                                add_button = d.find_element(By.XPATH, "//button[contains(text(), 'add')] | //a[contains(text(), 'add')]")
+                                self.browser.switch_to.frame(frame)
+                                add_button = self.browser.find_element(By.XPATH, "//button[contains(text(), 'add')] | //a[contains(text(), 'add')]")
                                 if add_button:
                                     break
                             except:
-                                d.switch_to.default_content()
+                                self.browser.switch_to.default_content()
             if not add_button:
                 raise AssertionError("Could not find 'add' button for Inclusion/Exclusion criteria")
-            d.execute_script("arguments[0].click();", add_button)
-            time.sleep(2)
+            self.browser.execute_script("arguments[0].click();", add_button)
+            wait_for_page_load(self.browser)
 
-            age_min_link = d.find_element(By.LINK_TEXT, "Age min")
-            d.execute_script("arguments[0].click();", age_min_link)
-            time.sleep(2)
+            age_min_link = self.browser.find_element(By.LINK_TEXT, "Age min")
+            self.browser.execute_script("arguments[0].click();", age_min_link)
+            wait_for_page_load(self.browser)
 
             age_input = None
             try:
-                age_input = d.find_element(By.XPATH, "//input[@type='text' or @type='number'][1]")
+                age_input = self.browser.find_element(By.XPATH, "//input[@type='text' or @type='number'][1]")
             except:
                 try:
-                    age_input = d.find_element(By.TAG_NAME, "input")
+                    age_input = self.browser.find_element(By.TAG_NAME, "input")
                 except:
                     raise AssertionError("Could not find Age Min input field")
 
             age_input.clear()
             age_input.send_keys("abc")
-            time.sleep(1)
+            wait_for_page_load(self.browser)
 
             age_input.clear()
             age_input.send_keys("18")
-            time.sleep(1)
+            wait_for_page_load(self.browser)
             input_value = age_input.get_attribute("value")
             assert input_value == "18", f"Expected Age Min to be '18', but got '{input_value}'"
 
-            cancel_button = d.find_element(By.XPATH, "//button[text()='Cancel'] | //a[text()='Cancel']")
-            d.execute_script("arguments[0].click();", cancel_button)
-            time.sleep(2)
+            cancel_button = self.browser.find_element(By.XPATH, "//button[text()='Cancel'] | //a[text()='Cancel']")
+            self.browser.execute_script("arguments[0].click();", cancel_button)
+            wait_for_page_load(self.browser)
 
-            page_text = d.find_element(By.TAG_NAME, "body").text
+            page_text = self.browser.find_element(By.TAG_NAME, "body").text
             assert "Rule Detail" in page_text or "Cancer Screening: Pap Smear" in page_text, "Did not return to Rule Detail page after Cancel"
 
             add_button_2 = None
             try:
-                add_button_2 = d.find_element(By.XPATH, "//button[contains(text(), 'add')]")
+                add_button_2 = self.browser.find_element(By.XPATH, "//button[contains(text(), 'add')]")
             except:
                 try:
-                    add_button_2 = d.find_element(By.XPATH, "//a[contains(text(), 'add')]")
+                    add_button_2 = self.browser.find_element(By.XPATH, "//a[contains(text(), 'add')]")
                 except:
                     try:
-                        inclusion_section = d.find_element(By.XPATH, "//*[contains(text(), 'Inclusion/Exclusion')]")
+                        inclusion_section = self.browser.find_element(By.XPATH, "//*[contains(text(), 'Inclusion/Exclusion')]")
                         add_button_2 = inclusion_section.find_element(By.XPATH, ".//following::*[contains(text(), 'add')][1]")
                     except:
-                        frames = d.find_elements(By.TAG_NAME, "iframe")
+                        frames = self.browser.find_elements(By.TAG_NAME, "iframe")
                         for frame in frames:
                             try:
-                                d.switch_to.frame(frame)
-                                add_button_2 = d.find_element(By.XPATH, "//button[contains(text(), 'add')] | //a[contains(text(), 'add')]")
+                                self.browser.switch_to.frame(frame)
+                                add_button_2 = self.browser.find_element(By.XPATH, "//button[contains(text(), 'add')] | //a[contains(text(), 'add')]")
                                 if add_button_2:
                                     break
                             except:
-                                d.switch_to.default_content()
+                                self.browser.switch_to.default_content()
             if not add_button_2:
                 raise AssertionError("Could not find 'add' button for the second test")
-            d.execute_script("arguments[0].click();", add_button_2)
-            time.sleep(2)
+            self.browser.execute_script("arguments[0].click();", add_button_2)
+            wait_for_page_load(self.browser)
 
-            sex_link = d.find_element(By.LINK_TEXT, "Sex")
-            d.execute_script("arguments[0].click();", sex_link)
-            time.sleep(2)
+            sex_link = self.browser.find_element(By.LINK_TEXT, "Sex")
+            self.browser.execute_script("arguments[0].click();", sex_link)
+            wait_for_page_load(self.browser)
 
             sex_dropdown = None
             try:
-                sex_dropdown = d.find_element(By.XPATH, "//select[contains(@id, 'sex') or contains(@name, 'sex')]")
+                sex_dropdown = self.browser.find_element(By.XPATH, "//select[contains(@id, 'sex') or contains(@name, 'sex')]")
             except:
                 try:
-                    sex_dropdown = d.find_element(By.XPATH, "//label[contains(text(), 'Sex')]/..//select")
+                    sex_dropdown = self.browser.find_element(By.XPATH, "//label[contains(text(), 'Sex')]/..//select")
                 except:
                     try:
-                        sex_dropdown = d.find_element(By.TAG_NAME, "select")
+                        sex_dropdown = self.browser.find_element(By.TAG_NAME, "select")
                     except:
                         raise AssertionError("Could not find Sex dropdown field")
 
             sex_dropdown.click()
-            time.sleep(1)
+            wait_for_page_load(self.browser)
 
             options = sex_dropdown.find_elements(By.TAG_NAME, "option")
             option_texts = [opt.text for opt in options]
@@ -187,21 +183,21 @@ class TestWebsite_cdr_rule:
                 if "Female" in option.text or "female" in option.text.lower():
                     option.click()
                     break
-            time.sleep(1)
+            wait_for_page_load(self.browser)
 
-            cancel_button_2 = d.find_element(By.XPATH, "//button[text()='Cancel'] | //a[text()='Cancel']")
-            d.execute_script("arguments[0].click();", cancel_button_2)
-            time.sleep(2)
+            cancel_button_2 = self.browser.find_element(By.XPATH, "//button[text()='Cancel'] | //a[text()='Cancel']")
+            self.browser.execute_script("arguments[0].click();", cancel_button_2)
+            wait_for_page_load(self.browser)
 
-            clinical_targets_add_button = d.find_element(By.XPATH, "//*[contains(text(), 'Clinical targets')]//a[contains(text(),'add')]")
-            d.execute_script("arguments[0].click();", clinical_targets_add_button)
-            time.sleep(2)
+            clinical_targets_add_button = self.browser.find_element(By.XPATH, "//*[contains(text(), 'Clinical targets')]//a[contains(text(),'add')]")
+            self.browser.execute_script("arguments[0].click();", clinical_targets_add_button)
+            wait_for_page_load(self.browser)
 
-            lifestyle_link = d.find_element(By.LINK_TEXT, "Lifestyle")
-            d.execute_script("arguments[0].click();", lifestyle_link)
-            time.sleep(2)
+            lifestyle_link = self.browser.find_element(By.LINK_TEXT, "Lifestyle")
+            self.browser.execute_script("arguments[0].click();", lifestyle_link)
+            wait_for_page_load(self.browser)
 
-            lifestyle_dropdown = d.find_element(By.TAG_NAME, "select")
+            lifestyle_dropdown = self.browser.find_element(By.TAG_NAME, "select")
             options = lifestyle_dropdown.find_elements(By.TAG_NAME, "option")
             option_texts = [opt.text for opt in options]
             assert "Tobacco" in option_texts, "Tobacco option not found in Lifestyle dropdown"
@@ -210,11 +206,11 @@ class TestWebsite_cdr_rule:
                 if "Tobacco" in option.text:
                     option.click()
                     break
-            time.sleep(1)
+            wait_for_page_load(self.browser)
 
-            cancel_button_3 = d.find_element(By.XPATH, "//a[text()='Cancel']")
-            d.execute_script("arguments[0].click();", cancel_button_3)
-            time.sleep(2)
+            cancel_button_3 = self.browser.find_element(By.XPATH, "//a[text()='Cancel']")
+            self.browser.execute_script("arguments[0].click();", cancel_button_3)
+            wait_for_page_load(self.browser)
 
         except Exception:
             raise
