@@ -21,20 +21,8 @@ class BillingViewCard extends CardModel
 
     private const CARD_ID = 'billing';
 
-    private $pid;
-
-    private $insco_name;
-
-    private $primaryInsurance;
-
-    private $billingNote;
-
-    public function __construct($pid, $insco_name, $billingNote, $primaryInsurance, array $opts = [])
+    public function __construct(private $pid, private $insco_name, private $billingNote, private $primaryInsurance, array $opts = [])
     {
-        $this->pid = $pid;
-        $this->insco_name = $insco_name;
-        $this->primaryInsurance = $primaryInsurance;
-        $this->billingNote = $billingNote;
         $opts = $this->setupOpts($opts);
         parent::__construct($opts);
     }
@@ -67,6 +55,7 @@ class BillingViewCard extends CardModel
         $insurancebalance = get_patient_balance($pid, true) - $patientbalance;
         $totalbalance = $patientbalance + $insurancebalance;
         $unallocated_amt = get_unallocated_patient_balance($pid);
+        $collectionbalance = get_patient_balance($pid, false, false, true);
 
         $id = self::CARD_ID . "_ps_expand";
         $dispatchResult = $ed->dispatch(new RenderEvent('billing'), RenderEvent::EVENT_HANDLE);
@@ -79,6 +68,7 @@ class BillingViewCard extends CardModel
             'patientBalance' => $patientbalance,
             'insuranceBalance' => $insurancebalance,
             'totalBalance' => $totalbalance,
+            'collectionBalance' => $collectionbalance,
             'unallocated' => $unallocated_amt,
             'forceAlwaysOpen' => $forceBillingExpandAlways,
             'prependedInjection' => $dispatchResult->getPrependedInjection(),

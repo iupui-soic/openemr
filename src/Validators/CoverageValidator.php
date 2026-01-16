@@ -49,12 +49,12 @@ class CoverageValidator extends BaseValidator
         // insert validations
         $this->validator->context(
             self::DATABASE_INSERT_CONTEXT,
-            function (Validator $context) {
+            function (Validator $context): void {
                 if (!$context instanceof OpenEMRParticleValidator) {
                     throw new \RuntimeException("CoverageValidator requires an instance of OpenEMRParticleValidator");
                 }
                 $context->required('pid')->numeric();
-                $context->required('type')->inArray(array('primary', 'secondary', 'tertiary'))
+                $context->required('type')->inArray(['primary', 'secondary', 'tertiary'])
                     ->callback(function ($value) {
                         if ($GLOBALS['insurance_only_one']) {
                             if ($value !== 'primary') {
@@ -69,7 +69,7 @@ class CoverageValidator extends BaseValidator
                 $context->optional('group_number')->lengthBetween(2, 255);
                 $context->required('subscriber_lname')->lengthBetween(2, 255);
                 $context->optional('subscriber_mname')->lengthBetween(1, 255);
-                $context->required('subscriber_fname')->lengthBetween(2, 255);
+                $context->required('subscriber_fname')->lengthBetween(1, 255);
                 $context->required('subscriber_relationship')->listOption('sub_relation')
                     ->callback(function ($value, $values) {
                         if (
@@ -112,7 +112,13 @@ class CoverageValidator extends BaseValidator
                                     $previousNames = $patient['previous_names'];
                                     $found = false;
                                     foreach ($previousNames as $previousName) {
-                                        if ($previousName['previous_name_first'] == $values['subscriber_fname'] && $previousName['previous_name_last'] == $values['subscriber_lname']) {
+                                        // do a strict equality and then we can do multibyte comparison for localizations
+                                        // note if we want to handle more comprehensive multibytes
+                                        // we need to do some normalizations as per this stackoverflow post: https://stackoverflow.com/a/38855868
+                                        if (
+                                            mb_is_string_equal_ci($previousName['previous_name_first'], $values['subscriber_fname'])
+                                            && mb_is_string_equal_ci($previousName['previous_name_last'], $values['subscriber_lname'])
+                                        ) {
                                             $found = true;
                                             break;
                                         }
@@ -136,18 +142,17 @@ class CoverageValidator extends BaseValidator
                         }
                         return true;
                     });
-                $context->required('subscriber_ss')->lengthBetween(2, 255);
                 $context->required('subscriber_DOB')->datetime('Y-m-d');
                 $context->required('subscriber_street')->lengthBetween(2, 255);
                 $context->required('subscriber_postal_code')->lengthBetween(2, 255);
                 $context->required('subscriber_city')->lengthBetween(2, 255);
                 $context->required('subscriber_state')->listOption($GLOBALS['state_list']);
-                $context->required('subscriber_country')->listOption($GLOBALS['country_list']);
+                $context->optional('subscriber_country')->listOption($GLOBALS['country_list']);
                 $context->optional('subscriber_phone')->lengthBetween(2, 255);
                 $context->required('subscriber_sex')->listOption('sex');
                 $context->required('accept_assignment')->inArray(['TRUE', 'FALSE']);
                 // policy type has a Not Applicable(NA) option which is an empty string so we allow empty here
-                $context->required('policy_type')->allowEmpty(true)->inArray(InsurancePolicyTypes::POLICY_TYPES);
+                $context->optional('policy_type')->allowEmpty(true)->inArray(InsurancePolicyTypes::POLICY_TYPES);
                 $context->optional('subscriber_employer')->lengthBetween(2, 255);
                 $context->optional('subscriber_employer_street')->lengthBetween(2, 255);
                 $context->optional('subscriber_employer_postal_code')->lengthBetween(2, 255);
@@ -189,7 +194,7 @@ class CoverageValidator extends BaseValidator
                                     throw new InvalidValueException("A current policy (no end date) already exists for this patient and type.", "Record::DUPLICATE_CURRENT_POLICY");
                                 }
                             }
-                            if (!empty($values['date_end']) && strtotime($values['date']) > strtotime($values['date_end'])) {
+                            if (!empty($values['date_end']) && strtotime((string) $values['date']) > strtotime((string) $values['date_end'])) {
                                 throw new InvalidValueException("Start date cannot be after end date", "DateTime::INVALID_START_DATE");
                             }
                         }
@@ -203,23 +208,19 @@ class CoverageValidator extends BaseValidator
                             }
                         }
                         return false;
-                    }, null, true)
+                    })
                     ->datetime('Y-m-d')
-                    ->callback(function ($value, $values) {
-
-
-                        return true;
-                    });
+                    ->callback(fn($value, $values): true => true);
             }
         );
 
         // update validations copied from insert
         $this->validator->context(
             self::DATABASE_UPDATE_CONTEXT,
-            function (Validator $context) {
+            function (Validator $context): void {
                 $context->copyContext(
                     self::DATABASE_INSERT_CONTEXT,
-                    function ($rules) {
+                    function ($rules): void {
                         foreach ($rules as $key => $chain) {
                             if ($key !== 'type') {
                                 $chain->required(false);
@@ -228,20 +229,16 @@ class CoverageValidator extends BaseValidator
                     }
                 );
                 // additional uuid validation
-                $context->required("uuid", "Coverage UUID")->callback(function ($value) {
-                    return $this->validateId("uuid", "insurance_data", $value, true);
-                })->uuid();
+                $context->required("uuid", "Coverage UUID")->callback(fn($value) => $this->validateId("uuid", "insurance_data", $value, true))->uuid();
             }
         );
 
         $this->validator->context(
             self::DATABASE_SWAP_CONTEXT,
-            function (Validator $context) {
-                $context->required("uuid", "Coverage UUID")->callback(function ($value) {
-                    return $this->validateId("uuid", "insurance_data", $value, true);
-                })->uuid();
+            function (Validator $context): void {
+                $context->required("uuid", "Coverage UUID")->callback(fn($value) => $this->validateId("uuid", "insurance_data", $value, true))->uuid();
                 $context->required("pid", "Patient ID")->numeric();
-                $context->required("type", "Coverage Type")->inArray(array('primary', 'secondary', 'tertiary'))
+                $context->required("type", "Coverage Type")->inArray(['primary', 'secondary', 'tertiary'])
                     ->callback(function ($value, $values) {
                         if (empty($values['uuid']) && empty($values['pid'])) {
                             return true; // nothing to do here if we don't have a uuid or pid, so don't run the check and let other failures happen

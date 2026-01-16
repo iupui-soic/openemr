@@ -12,9 +12,10 @@
 /* We should really try to keep this library jQuery free ie javaScript only! */
 
 // Translation function
-// This calls the i18next.t function that has been set up in main.php
+// This calls the i18next.t function that has been set up in main.php, portal/base.html.twig, etc.
 function xl(string) {
-    if (typeof top.i18next.t == 'function') {
+    // safety check if for some reason the i18next is not included.
+    if (top.i18next && typeof top.i18next.t == 'function') {
         return top.i18next.t(string);
     } else {
         // Unable to find the i18next.t function, so log error
@@ -51,6 +52,12 @@ if (typeof htmlEscapesText === 'undefined') {
         return ('' + string).replace(htmlEscaperAttr, function (match) {
             return htmlEscapesAttr[match];
         });
+    };
+    jsXla = function (string) {
+        return jsAttr(xl(string));
+    };
+    jsXlt = function (string) {
+        return jsText(xl(string));
     };
 }
 
@@ -345,6 +352,47 @@ function oeSortable(callBackFn) {
     }
 }
 
+// Password Strength Meter JavaScript
+function checkPasswordStrength(inputElement) {
+    var number = /[\p{N}]/u;  // Matches any Unicode number character
+    var alphabets = /[\p{L}]/u;  // Matches any Unicode letter character
+    var special_characters = /[^\p{N}\p{L}]/u; // Matches any character that is not a letter, number, or whitespace
+
+    var pwd = inputElement.value;
+    var strength = 0;
+
+    if (pwd.length < 6) {
+        document.getElementById('password_strength_meter').style.backgroundColor = "#ff6666";
+        document.getElementById('password_strength_text').innerText = xl('Very Weak');
+    } else {
+        if (pwd.match(number) && pwd.match(alphabets) && pwd.match(special_characters)) {
+            strength += 3;
+        } else if (pwd.match(number) && pwd.match(alphabets)) {
+            strength += 2;
+        } else if (pwd.match(alphabets)) {
+            strength += 1;
+        }
+
+        switch (strength) {
+            case 1:
+                document.getElementById('password_strength_meter').style.backgroundColor = "#ffcc00";
+                document.getElementById('password_strength_text').innerText = xl('Weak');
+                break;
+            case 2:
+                document.getElementById('password_strength_meter').style.backgroundColor = "#ffcc66";
+                document.getElementById('password_strength_text').innerText = xl('Good');
+                break;
+            case 3:
+                document.getElementById('password_strength_meter').style.backgroundColor = "#99cc00";
+                document.getElementById('password_strength_text').innerText = xl('Strong');
+                break;
+            default:
+                document.getElementById('password_strength_meter').style.backgroundColor = "#ff6666";
+                document.getElementById('password_strength_text').innerText = xl('Very Weak');
+                break;
+        }
+    }
+}
 
 /*
 * Universal async BS alert message with promise
@@ -400,25 +448,23 @@ async function syncAlertMsg(message, timer = 5000, type = 'danger', size = '') {
 }
 
 /* Handy function to set values in globals user_settings table */
-if (typeof persistUserOption !== "function") {
-    const persistUserOption = function (option, value) {
-        return $.ajax({
-            url: top.webroot_url + "/library/ajax/user_settings.php",
-            type: 'post',
-            contentType: 'application/x-www-form-urlencoded',
-            data: {
-                csrf_token_form: top.csrf_token_js,
-                target: option,
-                setting: value
-            },
-            beforeSend: function () {
-                top.restoreSession();
-            },
-            error: function (jqxhr, status, errorThrown) {
-                console.log(errorThrown);
-            }
-        });
-    };
+async function persistUserOption(option, value) {
+    return $.ajax({
+        url: top.webroot_url + "/library/ajax/user_settings.php",
+        type: 'post',
+        contentType: 'application/x-www-form-urlencoded',
+        data: {
+            csrf_token_form: top.csrf_token_js,
+            target: option,
+            setting: value
+        },
+        beforeSend: function () {
+            top.restoreSession();
+        },
+        error: function (jqxhr, status, errorThrown) {
+            console.log(errorThrown);
+        }
+    });
 }
 
 /**
@@ -475,31 +521,157 @@ if (typeof top.userDebug !== 'undefined' && (top.userDebug === '1' || top.userDe
     };
 }
 
-(function(window, oeSMART) {
-    oeSMART.initLaunch = function(webroot, csrfToken) {
+(function (window, oeSMART) {
+    oeSMART.initLaunch = function (webroot, csrfToken) {
         // allows this to be lazy defined
-        let xl = window.top.xl || function(text) { return text; };
+        let xl = window.top.xl || function (text) {
+            return text;
+        };
         let smartLaunchers = document.querySelectorAll('.smart-launch-btn');
         for (let launch of smartLaunchers) {
-                launch.addEventListener('click', function (evt) {
-                    let node = evt.target;
-                    let intent = node.dataset.intent;
-                    let clientId = node.dataset.clientId;
-                    if (!intent || !clientId) {
-                        console.error("mising intent parameter or client-id parameter");
+            launch.addEventListener('click', function (evt) {
+                let node = evt.target;
+                let intent = node.dataset.intent;
+                let clientId = node.dataset.clientId;
+                if (!intent || !clientId) {
+                    console.error("mising intent parameter or client-id parameter");
+                    return;
+                }
+
+                const params = new URLSearchParams({
+                    client_id: clientId,
+                    csrf_token: csrfToken,
+                    intent: intent
+                });
+                let url = webroot + '/interface/smart/ehr-launch-client.php?' + params;
+                let title = node.dataset.smartName || JSON.stringify(xl("Smart App"));
+                // we allow external dialog's  here because that is what a SMART app is
+                let height = window.top.innerHeight; // do our full height here
+                dlgopen(url, '_blank', 'modal-full', height, '', title, {allowExternal: true});
+            });
+        }
+
+        let dsiHelpNodes = document.querySelectorAll(".smart-launch-dsi-info");
+        for (let dsiHelp of dsiHelpNodes) {
+            dsiHelp.addEventListener('click', function (evt) {
+                let node = evt.target;
+                let dsi = node.dataset.dsiServiceId || "";
+                if (typeof dsi != "string" || dsi == "") {
+                    console.error("mising data-dsi-service-id parameter for .smart-launch-dsi-info");
+                    return;
+                }
+
+
+                // need to add a window message listener for editing the source attributes
+                let windowMessageHandler = function () {
+                    console.log("received message ", event);
+                    if (event.origin !== window.location.origin) {
                         return;
                     }
+                    let data = event.data;
+                    if (data && data.type === 'smart-dsi-edit-source') {
+                        window.name = event.source.name;
+                        dlgclose();
+                        window.top.removeEventListener('message', windowMessageHandler);
+                        // loadFrame already handles webroot and /interface/ prefix.
+                        const editParams = new URLSearchParams({
+                            csrf_token: csrfToken,
+                            action: "external-cdr/edit/" + data.dsiId
+                        });
+                        let editUrl = '/smart/admin-client.php?' + editParams;
+                        window.parent.left_nav.loadFrame('adm', 'adm0', editUrl);
+                    }
+                };
+                window.top.addEventListener('message', windowMessageHandler);
 
-                    let url = webroot + '/interface/smart/ehr-launch-client.php?intent='
-                        + encodeURIComponent(intent) + '&client_id=' + encodeURIComponent(clientId)
-                        + "&csrf_token=" + encodeURIComponent(csrfToken);
-                    let title = node.dataset.smartName || JSON.stringify(xl("Smart App"));
-                    // we allow external dialog's  here because that is what a SMART app is
-                    let height = window.top.innerHeight; // do our full height here
-                    dlgopen(url, '_blank', 'modal-full', height, '', title, {allowExternal: true});
+                const params = new URLSearchParams({
+                    action: "external-cdr/cdr-info",
+                    csrf_token: csrfToken,
+                    serviceId: dsi
                 });
+                let url = webroot + '/interface/smart/admin-client.php?' + params;
+                let title = node.dataset.smartName || JSON.stringify(xl("Smart App"));
+                // we allow external dialog's  here because that is what a SMART app is
+                let height = window.top.innerHeight; // do our full height here
+                dlgopen(url, 'smartDsiEditSource', 'modal-full', height, '', title, {
+                    allowExternal: false, onClose: function () {
+                        window.top.removeEventListener('message', windowMessageHandler);
+                    }
+                });
+            });
         }
     };
     window.oeSMART = oeSMART;
 })(window, window.top.oeSMART || {});
 
+/*
+* @function isValidEmail(emailAddress)
+* @summary call this function where you need to validate an email address
+*  is formatted correctly, function will return bool true/false
+*
+* @param string An email address to validate, e.g. e.g. first.last@gmail.com
+*/
+function isValidEmail(emailAddress) {
+    // RegEx from https://owasp.org/www-community/OWASP_Validation_Regex_Repository
+    var mailformat = /^[a-zA-Z0-9_+&*-]+(?:\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
+    if (emailAddress.match(mailformat)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+function normalizeToFilename(str) {
+    const controlCharsRegex = new RegExp(
+        '[' +
+        String.fromCharCode(0) + '-' + String.fromCharCode(31) +
+        String.fromCharCode(128) + '-' + String.fromCharCode(159) +
+        ']',
+        'g'
+    );
+
+    return str
+    .replace(/[<>:"/\\|?*]/g, '') // Remove illegal filename characters
+    .replace(controlCharsRegex, '') // Remove control characters
+    .replace(/[\s.,()[\]]/g, '_') // Replace spaces and punctuation with underscore
+    .replace(/[&+]/g, 'and') // Replace & and + with "and"
+    .replace(/_+/g, '_') // Collapse multiple underscores
+    .replace(/^_|_$/g, '') // Trim leading/trailing underscores
+    .toLowerCase()
+    .substring(0, 100); // Limit length
+}
+
+/*
+* @function js_uniqid()
+* @summary call this function where you need a unique id, based on php uniqid()
+*
+* @param string prefix to go before unique id that is generated
+* @param boolean
+*/
+function js_uniqid(prefix = "", moreEntropy = true) {
+
+    // Get microseconds since Unix epoch
+    const time = Date.now();
+    const micro = (performance.now() * 1000) % 1000000;
+    const uniqidTime = Math.floor(time / 1000) * 1000000 + Math.floor(micro);
+
+    // Convert to hex (PHP uses 8 chars for seconds + 5 for microseconds)
+    let id = uniqidTime.toString(16);
+
+    if (moreEntropy) {
+        // Ensure at least 4 random digits, exactly 13 total
+        const entropyDigits = 4;
+        const timestampDigits = 13 - entropyDigits; // 9 digits
+
+        // Trim timestamp if needed to make room for entropy
+        if (id.length > timestampDigits) {
+            id = id.slice(0, timestampDigits); // Keep the first 9 digits
+        }
+
+        // Generate random hex string
+        const maxEntropy = Math.pow(16, entropyDigits);
+        const entropy = Math.floor(Math.random() * maxEntropy);
+        id += entropy.toString(16).padStart(entropyDigits, '0');
+    }
+
+    return prefix + id;
+}

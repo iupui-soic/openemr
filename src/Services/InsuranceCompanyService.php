@@ -104,7 +104,7 @@ class InsuranceCompanyService extends BaseService
                     ", " . $insuranceCompany['state'] . ", " . $insuranceCompany['zip'] . ", " . $insuranceCompany['cms_id'] . ")";
                 break;
             case '7':
-                preg_match("/\d+/", $insuranceCompany['line1'], $matches);
+                preg_match("/\d+/", (string) $insuranceCompany['line1'], $matches);
                 $returnval = $insuranceCompany['name'] . " (" . $insuranceCompany['zip'] .
                     "," . $matches[0] . ")";
                 break;
@@ -151,7 +151,9 @@ class InsuranceCompanyService extends BaseService
         $sql .= "        a.state,";
         $sql .= "        a.zip,";
         $sql .= "        a.plus_four,";
-        $sql .= "        a.country";
+        $sql .= "        a.country,";
+        $sql .= "        i.date_created,";
+        $sql .= "        i.last_updated";
         $sql .= " FROM insurance_companies i ";
         $sql .= " LEFT JOIN (SELECT line1,line2,city,state,zip,plus_four,country,foreign_id FROM addresses) a ON i.id = a.foreign_id";
         // the foreign_id here is a globally unique sequence so there is no conflict.
@@ -199,7 +201,7 @@ class InsuranceCompanyService extends BaseService
         return $processingResult;
     }
 
-    public function getAll($search = array(), $isAndCondition = true)
+    public function getAll($search = [], $isAndCondition = true)
     {
         // Validating and Converting UUID to ID
         if (isset($search['id'])) {
@@ -216,7 +218,7 @@ class InsuranceCompanyService extends BaseService
             $search['id'] = $this->getIdByUuid($uuidBytes, self::INSURANCE_TABLE, "id");
         }
 
-        $sqlBindArray = array();
+        $sqlBindArray = [];
         $sql = " SELECT i.id,";
         $sql .= "        i.uuid,";
         $sql .= "        i.name,";
@@ -238,7 +240,7 @@ class InsuranceCompanyService extends BaseService
 
         if (!empty($search)) {
             $sql .= ' AND ';
-            $whereClauses = array();
+            $whereClauses = [];
             foreach ($search as $fieldName => $fieldValue) {
                 array_push($whereClauses, $fieldName . ' = ?');
                 array_push($sqlBindArray, $fieldValue);
@@ -262,7 +264,7 @@ class InsuranceCompanyService extends BaseService
         // TODO: this should be refactored to use getAll but its selecting all the columns and for backwards
         // compatibility we will leave this here.
         $sql = "SELECT * FROM insurance_companies WHERE id=?";
-        return sqlQuery($sql, array($id));
+        return sqlQuery($sql, [$id]);
     }
 
     public function getOne($uuid): ProcessingResult
@@ -342,7 +344,7 @@ class InsuranceCompanyService extends BaseService
         // I don't like actually inserting a raw id... yet if we don't allow for this
         // it makes it very hard for any kind of data import that needs to maintain the same id.
         if (empty($data["id"])) {
-            $data["id"] = generate_id();
+            $data["id"] = QueryUtils::generateId();
         }
         $freshId = $data['id'];
 
@@ -360,7 +362,7 @@ class InsuranceCompanyService extends BaseService
         // throws an exception if the record doesn't insert
         QueryUtils::sqlInsert(
             $sql,
-            array(
+            [
                 $freshId,
                 $data["name"],
                 $data["attn"],
@@ -370,7 +372,7 @@ class InsuranceCompanyService extends BaseService
                 $data["x12_default_partner_id"] ?? '',
                 $data["alt_cms_id"],
                 $data["cqm_sop"] ?? null,
-            )
+            ]
         );
 
         if (!empty($data["city"] ?? null) && !empty($data["state"] ?? null)) {
@@ -399,7 +401,7 @@ class InsuranceCompanyService extends BaseService
 
         $insuranceResults = sqlStatement(
             $sql,
-            array(
+            [
                 $data["name"],
                 $data["attn"],
                 $data["cms_id"],
@@ -409,7 +411,7 @@ class InsuranceCompanyService extends BaseService
                 $data["alt_cms_id"],
                 $data["cqm_sop"] ?? null,
                 $iid
-            )
+            ]
         );
 
         if (!$insuranceResults) {

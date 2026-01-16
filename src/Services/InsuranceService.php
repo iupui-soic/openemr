@@ -8,9 +8,11 @@
  * @author    Matthew Vita <matthewvita48@gmail.com>
  * @author    Brady Miller <brady.g.miller@gmail.com>
  * @author    Stephen Nielson <snielson@discoverandchange.com>
+ * @author    Stephen Waite <stephen.waite@cmsvt.com>
  * @copyright Copyright (c) 2018 Matthew Vita <matthewvita48@gmail.com>
  * @copyright Copyright (c) 2018 Brady Miller <brady.g.miller@gmail.com>
  * @copyright Copyright (c) 2024 Care Management Solutions, Inc. <stephen.waite@cmsvt.com>
+ * @copyright Copyright (c) 2024-2025 Care Management Solutions, Inc. <stephen.waite@cmsvt.com>
  * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
@@ -57,7 +59,7 @@ class InsuranceService extends BaseService
 
     public function getUuidFields(): array
     {
-        return ['uuid', 'puuid'];
+        return ['uuid', 'puuid', 'insureruuid'];
     }
 
     public function validate($data)
@@ -68,18 +70,25 @@ class InsuranceService extends BaseService
     public function getOneByPid($id, $type)
     {
         $sql = "SELECT * FROM insurance_data WHERE pid=? AND type=?";
-        return sqlQuery($sql, array($id, $type));
+        return sqlQuery($sql, [$id, $type]);
     }
 
     public function search($search, $isAndCondition = true)
     {
         $sql = "SELECT `insurance_data`.*,
-                       `puuid`
+                       `puuid`,
+                       `insureruuid`
                 FROM `insurance_data`
                 LEFT JOIN (
                     SELECT
+                    `uuid` AS `insureruuid`,
+                    `id` AS `insurerid`
+                    FROM `insurance_companies`
+                    ) `insurance_company_data` ON `insurance_data`.`provider` = `insurance_company_data`.`insurerid`
+                LEFT JOIN (
+                    SELECT
                     `pid` AS `patient_data_pid`,
-                    `uuid` as `puuid`
+                    `uuid` AS `puuid`
                     FROM `patient_data`
                 ) `patient_data` ON `insurance_data`.`pid` = `patient_data`.`patient_data_pid` ";
 
@@ -114,7 +123,7 @@ class InsuranceService extends BaseService
         $uuidBytes = UuidRegistry::uuidToBytes($uuid);
         $sql = "SELECT * FROM insurance_data WHERE uuid=? ";
 
-        $sqlResult = sqlQuery($sql, array($uuidBytes));
+        $sqlResult = sqlQuery($sql, [$uuidBytes]);
         if ($sqlResult) {
             $sqlResult['uuid'] = UuidRegistry::uuidToString($sqlResult['uuid']);
             $processingResult->addData($sqlResult);
@@ -130,7 +139,7 @@ class InsuranceService extends BaseService
      * @param $isAndCondition
      * @return ProcessingResult|true
      */
-    public function getAll($search = array(), $isAndCondition = true)
+    public function getAll($search = [], $isAndCondition = true)
     {
 
         // Validating and Converting Patient UUID to PID
@@ -177,11 +186,11 @@ class InsuranceService extends BaseService
             $uuidBytes = UuidRegistry::uuidToBytes($search['id']);
             $search['id'] = $this->getIdByUuid($uuidBytes, self::COVERAGE_TABLE, "id");
         }
-        $sqlBindArray = array();
+        $sqlBindArray = [];
         $sql = "SELECT * FROM insurance_data ";
         if (!empty($search)) {
             $sql .= ' WHERE ';
-            $whereClauses = array();
+            $whereClauses = [];
             foreach ($search as $fieldName => $fieldValue) {
                 array_push($whereClauses, $fieldName . ' = ?');
                 array_push($sqlBindArray, $fieldValue);
@@ -211,7 +220,7 @@ class InsuranceService extends BaseService
         if (!empty($type)) {
             return sqlQuery("Select `id` From `insurance_data` Where pid = ? And type = ?", [$pid, $type])['id'] ?? null;
         }
-        return $this->getOne($pid, $type) !== false;
+        return $this->getOne($pid) !== false;
     }
 
     public function update($data)
@@ -260,10 +269,9 @@ class InsuranceService extends BaseService
         $data = $serviceSaveEvent->getSaveData();
         $uuid = UuidRegistry::uuidToBytes($data['uuid']);
 
-
         $results = sqlStatement(
             $sql,
-            array(
+            [
                 $data["provider"],
                 $data["plan_name"],
                 $data["policy_number"],
@@ -294,7 +302,7 @@ class InsuranceService extends BaseService
                 $data["policy_type"],
                 $data['type'],
                 $uuid
-            )
+            ]
         );
         if ($results) {
             $serviceSavePostEvent = new ServiceSaveEvent($this, $data);
@@ -353,7 +361,7 @@ class InsuranceService extends BaseService
 
         $insuranceDataId = sqlInsert(
             $sql,
-            array(
+            [
                 $data['uuid'],
                 $data['type'],
                 $data["provider"],
@@ -384,7 +392,7 @@ class InsuranceService extends BaseService
                 $data["subscriber_sex"] ?? '',
                 $data["accept_assignment"] ?? '',
                 $data["policy_type"] ?? ''
-            )
+            ]
         );
         // I prefer exceptions... but we will try to match other service handler formats for consistency
         $processingResult = new ProcessingResult();
@@ -407,37 +415,44 @@ class InsuranceService extends BaseService
     /**
      * Return an array of encounters within a date range
      *
-     * @param  $start_date  Any encounter starting on this date
-     * @param  $end_date  Any encounter ending on this date
-     * @return Array Encounter data payload.
+     * @param  $provider   Insurance company id
+     * @param  $startDate  Any encounter starting on this date
+     * @param  $endDate    Any encounter ending on this date
+     * @return Array       Insurance data payload.
      */
-    public function getPidsForPayerByEffectiveDate($provider, $type, $startDate, $endDate)
+    public function getPoliciesByPayerByEffectiveDate($provider, $type, $startDate, $endDate)
     {
         // most common case of null in 'date' field aka effective date which signifies is only insurance of that type
         // TBD: add another token for 'date_end' field
         $dateMissing = new TokenSearchField('date', [new TokenSearchValue(null)]);
         $dateMissing->setModifier(SearchModifier::MISSING);
 
+        $dateEndMissing = new TokenSearchField('date_end', [new TokenSearchValue(null)]);
+        $dateEndMissing->setModifier(SearchModifier::MISSING);
+
         // search for encounters by passed in start and end dates
         $dateField = new DateSearchField('date', ['ge' . $startDate, 'le' . $endDate], DateSearchField::DATE_TYPE_DATE);
+        $dateEndField = new DateSearchField('date_end', ['ge' . $endDate], DateSearchField::DATE_TYPE_DATE);
 
         // set up composite search with false signifying an OR condition for the effective date
-        $composite = new CompositeSearchField('date', [], false);
-        $composite->addChild($dateMissing);
-        $composite->addChild($dateField);
+        $compositeDate = new CompositeSearchField('date', [], false);
+        $compositeDate->addChild($dateMissing);
+        $compositeDate->addChild($dateField);
+
+        // set up composite search with false signifying an OR condition for the date end
+        $compositeDateEnd = new CompositeSearchField('date_end', [], false);
+        $compositeDateEnd->addChild($dateEndMissing);
+        $compositeDateEnd->addChild($dateEndField);
 
         $insuranceDataResult = $this->search(
             [
                 'provider' => $provider,
                 'type' => $type,
-                'date' => $composite,
+                'date' => $compositeDate,
+                'date_end' => $compositeDateEnd
             ]
         );
-        if ($insuranceDataResult->hasData()) {
-            $result = $insuranceDataResult->getData();
-        } else {
-            $result = [];
-        }
+        $result = $insuranceDataResult->hasData() ? $insuranceDataResult->getData() : [];
 
         return $result;
     }

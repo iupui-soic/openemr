@@ -12,7 +12,10 @@
 
 /** import supporting libraries */
 
+use OpenEMR\Common\Logging\SystemLogger;
+use OpenEMR\Core\OEGlobalsBag;
 use OpenEMR\Services\DocumentTemplates\DocumentTemplateRender;
+use OpenEMR\Services\Utils\TranslationService;
 
 require_once("AppBasePortalController.php");
 require_once("Model/OnsiteDocument.php");
@@ -48,14 +51,17 @@ class OnsiteDocumentController extends AppBasePortalController
         $is_portal = GlobalConfig::$PORTAL;
         $docid = $new_filename = "";
         // get latest help template id
-        $help_id = sqlQuery('SELECT * FROM `document_templates` WHERE `template_name` = ? Order By modified_date DESC Limit 1', array('Help'))['id'] ?? 0;
+        $help_id = sqlQuery('SELECT * FROM `document_templates` WHERE `template_name` = ? Order By modified_date DESC Limit 1', ['Help'])['id'] ?? 0;
 
         if (isset($_GET['pid'])) {
             $pid = (int)$_GET['pid'];
         }
         // only allow patient to see themselves
-        if (!empty($GLOBALS['bootstrap_pid'])) {
-            $pid = (int)$GLOBALS['bootstrap_pid'];
+
+        $bootstrapPid = OEGlobalsBag::getInstance()->get('bootstrap_pid');
+            // only allow patient to delete themselves
+        if (!empty($bootstrapPid)) {
+            $pid = (int)$bootstrapPid;
         }
 
         $user = $_GET['user'] ?? 0;
@@ -66,6 +72,7 @@ class OnsiteDocumentController extends AppBasePortalController
         $catid = $_GET['catid'] ?? '';
         $new_filename = $_GET['new'] ?? '';
         $doc_edit = $_GET['edit'] ?? 0;
+        $referer_flag = $_GET['referer_flag'] ?? 0; // return to New Documents or Documents
 
         $auto_render = $_GET['auto_render_id'] ?? 0;
         $auto_render_name = $_GET['auto_render_name'] ?? 0;
@@ -75,6 +82,9 @@ class OnsiteDocumentController extends AppBasePortalController
         unset($_GET['auto_render_name']);
         unset($_GET['audit_render_id']);
 
+        $language_defs = TranslationService::getLanguageDefinitionsForSession();
+
+        $this->Assign("language_defs", $language_defs);
         $this->Assign('doc_edit', $doc_edit);
         $this->Assign('recid', $recid);
         $this->Assign('help_id', $help_id);
@@ -88,6 +98,7 @@ class OnsiteDocumentController extends AppBasePortalController
         $this->Assign('new_filename', $new_filename);
         $this->Assign('auto_render', $auto_render);
         $this->Assign('audit_render', $audit_render);
+        $this->Assign('referer_flag', $referer_flag);
         $this->Assign('auto_render_name', $auto_render_name);
         $this->Render();
     }
@@ -104,14 +115,21 @@ class OnsiteDocumentController extends AppBasePortalController
             $pid = RequestUtil::Get('patientId');
 
             // only allow patient to see themself
-            if (!empty($GLOBALS['bootstrap_pid'])) {
-                $pid = $GLOBALS['bootstrap_pid'];
+            $bootstrapPid = OEGlobalsBag::getInstance()->get('bootstrap_pid');
+            // only allow patient to delete themselves
+            if (!empty($bootstrapPid)) {
+                $pid = $bootstrapPid;
             }
 
             $criteria->Pid_Equals = $pid;
             $recid = RequestUtil::Get('recid');
             if ($recid > 0) {
                 $criteria->Id_Equals = $recid;
+            }
+
+            $exc = RequestUtil::Get('showActive');
+            if ($exc != 'true') {
+                $criteria->DenialReason_IsNotLike = 'Locked';
             }
 
             $filter = RequestUtil::Get('filter');
@@ -124,7 +142,7 @@ class OnsiteDocumentController extends AppBasePortalController
 
             // TODO: this is generic query filtering based only on criteria properties
             foreach (array_keys($_REQUEST) as $prop) {
-                $prop_normal = ucfirst($prop);
+                $prop_normal = ucfirst((string) $prop);
                 $prop_equals = $prop_normal . '_Equals';
 
                 if (property_exists($criteria, $prop_normal)) {
@@ -139,8 +157,11 @@ class OnsiteDocumentController extends AppBasePortalController
 
             // if a sort order was specified then specify in the criteria
             $output->orderBy = RequestUtil::Get('orderBy');
+            $output->orderBy = $output->orderBy ?: 'DenialReason';
             $output->orderDesc = RequestUtil::Get('orderDesc') != '';
             if ($output->orderBy) {
+                $criteria->SetOrder($output->orderBy, $output->orderDesc);
+                $output->orderBy = 'ReviewDate';
                 $criteria->SetOrder($output->orderBy, $output->orderDesc);
             }
 
@@ -188,8 +209,11 @@ class OnsiteDocumentController extends AppBasePortalController
         }
 
         // only allow patient to see themself
-        if (!empty($GLOBALS['bootstrap_pid'])) {
-            $pid = $GLOBALS['bootstrap_pid'];
+
+        $bootstrapPid = OEGlobalsBag::getInstance()->get('bootstrap_pid');
+            // only allow patient to delete themselves
+        if (!empty($bootstrapPid)) {
+            $pid = $bootstrapPid;
         }
 
         if (isset($_GET['user'])) {
@@ -217,14 +241,15 @@ class OnsiteDocumentController extends AppBasePortalController
             $onsitedocument = $this->Phreezer->Get('OnsiteDocument', $pk);
 
             // only allow patient to see themself
-            if (!empty($GLOBALS['bootstrap_pid'])) {
-                if ($GLOBALS['bootstrap_pid'] != $onsitedocument->Pid) {
-                    $error = 'Unauthorized';
-                    throw new Exception($error);
-                }
+
+            $bootstrapPid = OEGlobalsBag::getInstance()->get('bootstrap_pid');
+            // only allow patient to delete themselves
+            if (!empty($bootstrapPid) && $bootstrapPid != $onsitedocument->Pid) {
+                $error = 'Unauthorized';
+                throw new Exception($error);
             }
 
-            $isLegacy = stripos($onsitedocument->FullDocument, 'portal_version') === false;
+            $isLegacy = stripos((string) $onsitedocument->FullDocument, 'portal_version') === false;
             if (!empty($onsitedocument->TemplateData) && !$isLegacy) {
                 $templateRender = new DocumentTemplateRender($onsitedocument->Pid, $onsitedocument->Provider, $onsitedocument->Encounter);
                 // use original template saved in create/insert or get new raw template so same version stay with edits.
@@ -257,23 +282,20 @@ class OnsiteDocumentController extends AppBasePortalController
             $onsitedocument = new OnsiteDocument($this->Phreezer);
 
             // only allow patient to add to themselves
-            if (!empty($GLOBALS['bootstrap_pid'])) {
-                $onsitedocument->Pid = $GLOBALS['bootstrap_pid'];
-            } else {
-                $onsitedocument->Pid = $this->SafeGetVal($json, 'pid');
-            }
+            $bootstrapPid = OEGlobalsBag::getInstance()->get('bootstrap_pid');
+            $onsitedocument->Pid = !empty($bootstrapPid) ? $bootstrapPid : $this->SafeGetVal($json, 'pid');
 
             $onsitedocument->Facility = $this->SafeGetVal($json, 'facility');
             $onsitedocument->Provider = $this->SafeGetVal($json, 'provider');
             $onsitedocument->Encounter = $this->SafeGetVal($json, 'encounter');
-            $onsitedocument->CreateDate = date('Y-m-d H:i:s', strtotime($this->SafeGetVal($json, 'createDate')));
+            $onsitedocument->CreateDate = date('Y-m-d H:i:s', strtotime((string) $this->SafeGetVal($json, 'createDate')));
             $onsitedocument->DocType = $this->SafeGetVal($json, 'docType');
             $onsitedocument->PatientSignedStatus = $this->SafeGetVal($json, 'patientSignedStatus');
-            $onsitedocument->PatientSignedTime = date('Y-m-d H:i:s', strtotime($this->SafeGetVal($json, 'patientSignedTime')));
-            $onsitedocument->AuthorizeSignedTime = date('Y-m-d H:i:s', strtotime($this->SafeGetVal($json, 'authorizeSignedTime')));
+            $onsitedocument->PatientSignedTime = date('Y-m-d H:i:s', strtotime((string) $this->SafeGetVal($json, 'patientSignedTime')));
+            $onsitedocument->AuthorizeSignedTime = date('Y-m-d H:i:s', strtotime((string) $this->SafeGetVal($json, 'authorizeSignedTime')));
             $onsitedocument->AcceptSignedStatus = $this->SafeGetVal($json, 'acceptSignedStatus');
             $onsitedocument->AuthorizingSignator = $this->SafeGetVal($json, 'authorizingSignator');
-            $onsitedocument->ReviewDate = date('Y-m-d H:i:s', strtotime($this->SafeGetVal($json, 'reviewDate')));
+            $onsitedocument->ReviewDate = date('Y-m-d H:i:s', strtotime((string) $this->SafeGetVal($json, 'reviewDate')));
             $onsitedocument->DenialReason = $this->SafeGetVal($json, 'denialReason');
             $onsitedocument->AuthorizedSignature = $this->SafeGetVal($json, 'authorizedSignature');
             $onsitedocument->PatientSignature = $this->SafeGetVal($json, 'patientSignature');
@@ -297,7 +319,7 @@ class OnsiteDocumentController extends AppBasePortalController
                 $template_raw = $templateRender->fetchTemplateDocument($onsitedocument->FilePath)['template_content'];
                 // if versioned then is new templating.
                 if ($version == 'New') {
-                    $template_raw = $template_raw . "<input id='portal_version' name='portal_version' type='hidden' value='New' />";
+                    $template_raw .= "<input id='portal_version' name='portal_version' type='hidden' value='New' />";
                 }
                 $onsitedocument->FullDocument = $template_raw; // persist original for life of document.
 
@@ -318,6 +340,8 @@ class OnsiteDocumentController extends AppBasePortalController
         try {
             $json = json_decode(RequestUtil::GetBody());
 
+            $globalsBag = OEGlobalsBag::getInstance();
+
             if (!$json) {
                 throw new Exception('The request body does not contain valid JSON');
             }
@@ -326,24 +350,32 @@ class OnsiteDocumentController extends AppBasePortalController
 
             $existing_template = $onsitedocument->FullDocument;
 
-            $hasVersion = stripos($existing_template, 'portal_version') !== false;
+            $hasVersion = stripos((string) $existing_template, 'portal_version') !== false;
             if ($this->SafeGetVal($json, 'type') == 'flattened') {
                 $existing = $this->SafeGetVal($json, 'fullDocument');
                 if (!empty($existing)) {
                     $config = HTMLPurifier_Config::createDefault();
                     $config->set('Core.Encoding', 'UTF-8');
-                    $config->set('CSS.AllowedProperties', '*');
                     // purifier will only allow base64 data urls in img tag.
                     // all other element will be removed. Flatten document have already been sanitized
                     // by replacing all inputs, checks and radios tags to their answers.
                     // Thus Enter Comment: <input name="element" value="This is my comment I don't like purifier" />
                     // renders to Enter Comment: 'This is my comment I don't like purifier in document.'
-                    $config->set('URI.AllowedSchemes', array('data' => true));
+                    $config->set('URI.AllowedSchemes', ['data' => true]);
+                    $purifyTempDir = $globalsBag->getString('temporary_files_dir') . DIRECTORY_SEPARATOR . 'htmlpurifier';
+                    if (
+                        !is_dir($purifyTempDir)
+                    ) {
+                        if (!mkdir($purifyTempDir, 0700, true)) {
+                            (new SystemLogger())->error("Could not create directory ", [$purifyTempDir]);
+                        }
+                    }
+                    $config->set('Cache.SerializerPath', $purifyTempDir);
                     $purify = new HTMLPurifier($config);
                     $existing_template = $purify->purify($existing);
                     // since this is a flatten document won't need to track legacy or not.
                     if (!$hasVersion) {
-                        $existing_template = $existing_template . "<input id='portal_version' name='portal_version' type='hidden' value='New' />";
+                        $existing_template .= "<input id='portal_version' name='portal_version' type='hidden' value='New' />";
                     }
                 }
             } elseif (!empty($this->SafeGetVal($json, 'fullDocument'))) { // test if an unexpected document is sent.
@@ -354,30 +386,29 @@ class OnsiteDocumentController extends AppBasePortalController
             }
 
             // only allow patient to update themselves (part 1)
-            if (!empty($GLOBALS['bootstrap_pid'])) {
-                if ($GLOBALS['bootstrap_pid'] != $onsitedocument->Pid) {
-                    $error = 'Unauthorized';
-                    throw new Exception($error);
-                }
+
+            $bootstrapPid = $globalsBag->get('bootstrap_pid');
+            // only allow patient to delete themselves
+            if (!empty($bootstrapPid) && $bootstrapPid != $onsitedocument->Pid) {
+                $error = 'Unauthorized';
+                throw new Exception($error);
             }
             // only allow patient to update themselves (part 2)
-            if (!empty($GLOBALS['bootstrap_pid'])) {
-                $onsitedocument->Pid = $GLOBALS['bootstrap_pid'];
-            } else {
-                $onsitedocument->Pid = $this->SafeGetVal($json, 'pid', $onsitedocument->Pid);
-            }
+
+            // only allow patient to delete themselves
+            $onsitedocument->Pid = !empty($bootstrapPid) ? $bootstrapPid : $this->SafeGetVal($json, 'pid', $onsitedocument->Pid);
             // Set values from API interface.
             $onsitedocument->Facility = $this->SafeGetVal($json, 'facility', $onsitedocument->Facility);
             $onsitedocument->Provider = $this->SafeGetVal($json, 'provider', $onsitedocument->Provider);
             $onsitedocument->Encounter = $this->SafeGetVal($json, 'encounter', $onsitedocument->Encounter);
-            $onsitedocument->CreateDate = date('Y-m-d H:i:s', strtotime($this->SafeGetVal($json, 'createDate', $onsitedocument->CreateDate)));
+            $onsitedocument->CreateDate = date('Y-m-d H:i:s', strtotime((string) $this->SafeGetVal($json, 'createDate', $onsitedocument->CreateDate)));
             $onsitedocument->DocType = $this->SafeGetVal($json, 'docType', $onsitedocument->DocType);
             $onsitedocument->PatientSignedStatus = $this->SafeGetVal($json, 'patientSignedStatus', $onsitedocument->PatientSignedStatus);
-            $onsitedocument->PatientSignedTime = date('Y-m-d H:i:s', strtotime($this->SafeGetVal($json, 'patientSignedTime', $onsitedocument->PatientSignedTime)));
-            $onsitedocument->AuthorizeSignedTime = date('Y-m-d H:i:s', strtotime($this->SafeGetVal($json, 'authorizeSignedTime', $onsitedocument->AuthorizeSignedTime)));
+            $onsitedocument->PatientSignedTime = date('Y-m-d H:i:s', strtotime((string) $this->SafeGetVal($json, 'patientSignedTime', $onsitedocument->PatientSignedTime)));
+            $onsitedocument->AuthorizeSignedTime = date('Y-m-d H:i:s', strtotime((string) $this->SafeGetVal($json, 'authorizeSignedTime', $onsitedocument->AuthorizeSignedTime)));
             $onsitedocument->AcceptSignedStatus = $this->SafeGetVal($json, 'acceptSignedStatus', $onsitedocument->AcceptSignedStatus);
             $onsitedocument->AuthorizingSignator = $this->SafeGetVal($json, 'authorizingSignator', $onsitedocument->AuthorizingSignator);
-            $onsitedocument->ReviewDate = date('Y-m-d H:i:s', strtotime($this->SafeGetVal($json, 'reviewDate', $onsitedocument->ReviewDate)));
+            $onsitedocument->ReviewDate = date('Y-m-d H:i:s', strtotime((string) $this->SafeGetVal($json, 'reviewDate', $onsitedocument->ReviewDate)));
             $onsitedocument->DenialReason = $this->SafeGetVal($json, 'denialReason', $onsitedocument->DenialReason);
             $onsitedocument->AuthorizedSignature = $this->SafeGetVal($json, 'authorizedSignature', $onsitedocument->AuthorizedSignature);
             $onsitedocument->PatientSignature = $this->SafeGetVal($json, 'patientSignature', $onsitedocument->PatientSignature);
@@ -410,12 +441,11 @@ class OnsiteDocumentController extends AppBasePortalController
             $pk = $this->GetRouter()->GetUrlParam('id');
             $onsitedocument = $this->Phreezer->Get('OnsiteDocument', $pk);
 
+            $bootstrapPid = OEGlobalsBag::getInstance()->get('bootstrap_pid');
             // only allow patient to delete themselves
-            if (!empty($GLOBALS['bootstrap_pid'])) {
-                if ((int)$GLOBALS['bootstrap_pid'] !== (int)$onsitedocument->Pid) {
-                    $error = 'Unauthorized';
-                    throw new Exception($error);
-                }
+            if (!empty($bootstrapPid) && (int)$bootstrapPid !== (int)$onsitedocument->Pid) {
+                $error = 'Unauthorized';
+                throw new Exception($error);
             }
 
             $onsitedocument->Delete();

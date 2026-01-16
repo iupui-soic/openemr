@@ -1,25 +1,17 @@
 <?php
 
 /**
- * Functions to support LabCorp HL7 order generation.
- *
- * Copyright (C) 2012-2013 Rod Roark <rod@sunsetsystems.com>
- * Copyright (C) 2016-2020 Jerry Padgett <sjpadgett@gmail.com>
- *
- * LICENSE: This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://opensource.org/licenses/gpl-license.php>.
+ * Functions to support LabCorp HL7 order generation
  *
  * @package   OpenEMR
+ * @link      http://www.open-emr.org
  * @author    Rod Roark <rod@sunsetsystems.com>
  * @author    Jerry Padgett <sjpadgett@gmail.com>
+ * @author    Michael A. Smith <michael@opencoreemr.com>
+ * @copyright Copyright (c) 2012-2013 Rod Roark <rod@sunsetsystems.com>
+ * @copyright Copyright (c) 2016-2020 Jerry Padgett <sjpadgett@gmail.com>
+ * @copyright Copyright (c) 2025 OpenCoreEMR Inc.
+ * @license   https://github.com/openemr/openemr/blob/master/LICENSE GNU General Public License 3
  */
 
 /*
@@ -37,11 +29,11 @@
 * Then export as a CSV file and read it into your favorite spreadsheet app.
 */
 
-use OpenEMR\Common\Logging\EventAuditLogger;
-
-require_once("$srcdir/classes/Address.class.php");
-require_once("$srcdir/classes/InsuranceCompany.class.php");
 require_once("$webserver_root/custom/code_types.inc.php");
+
+use OpenEMR\Common\Logging\EventAuditLogger;
+use OpenEMR\Common\Orders\Hl7OrderGenerationException;
+use OpenEMR\Common\Orders\Hl7OrderResult;
 
 function hl7Text($s)
 {
@@ -57,12 +49,12 @@ function hl7Text($s)
 
 function hl7Zip($s)
 {
-    return hl7Text(preg_replace('/[-\s]*/', '', $s));
+    return hl7Text(preg_replace('/[-\s]*/', '', (string) $s));
 }
 
 function hl7Date($s)
 {
-    return preg_replace('/[^\d]/', '', $s);
+    return preg_replace('/[^\d]/', '', (string) $s);
 }
 
 function hl7Time($s)
@@ -70,12 +62,12 @@ function hl7Time($s)
     if (empty($s)) {
         return '';
     }
-    return date('YmdHi', strtotime($s));
+    return date('YmdHi', strtotime((string) $s));
 }
 
 function hl7Sex($s)
 {
-    $s = strtoupper(substr($s, 0, 1));
+    $s = strtoupper(substr((string) $s, 0, 1));
     if ($s !== 'M' && $s !== 'F') {
         $s = 'U';
     }
@@ -84,10 +76,10 @@ function hl7Sex($s)
 
 function hl7Phone($s)
 {
-    if (preg_match("/([2-9]\d\d)\D*(\d\d\d)\D*(\d\d\d\d)\D*$/", $s, $tmp)) {
+    if (preg_match("/([2-9]\d\d)\D*(\d\d\d)\D*(\d\d\d\d)\D*$/", (string) $s, $tmp)) {
         return $tmp[1] . $tmp[2] . $tmp[3];
     }
-    if (preg_match("/(\d\d\d)\D*(\d\d\d\d)\D*$/", $s, $tmp)) {
+    if (preg_match("/(\d\d\d)\D*(\d\d\d\d)\D*$/", (string) $s, $tmp)) {
         return $tmp[1] . $tmp[2];
     }
     return '';
@@ -95,7 +87,7 @@ function hl7Phone($s)
 
 function hl7SSN($s)
 {
-    if (preg_match("/(\d\d\d)\D*(\d\d)\D*(\d\d\d\d)\D*$/", $s, $tmp)) {
+    if (preg_match("/(\d\d\d)\D*(\d\d)\D*(\d\d\d\d)\D*$/", (string) $s, $tmp)) {
         return $tmp[1] . $tmp[2] . $tmp[3];
     }
     return '';
@@ -103,12 +95,12 @@ function hl7SSN($s)
 
 function hl7Priority($s)
 {
-    return strtoupper(substr($s, 0, 1)) === 'H' ? 'S' : 'R';
+    return strtoupper(substr((string) $s, 0, 1)) === 'H' ? 'S' : 'R';
 }
 
 function hl7Relation($s)
 {
-    $tmp = strtolower($s);
+    $tmp = strtolower((string) $s);
     if ($tmp == 'self' || $tmp == '') {
         return '1';
     }
@@ -130,7 +122,7 @@ function hl7Relation($s)
 
 function hl7Race($s)
 {
-    $tmp = strtolower($s);
+    $tmp = strtolower((string) $s);
     if ($tmp == '') {
         return 'X';
     } elseif ($tmp == 'asian') {
@@ -177,15 +169,15 @@ function loadPayerInfo($pid, $date = '')
     if (empty($date)) {
         $date = date('Y-m-d');
     }
-    $payers = array();
+    $payers = [];
     $dres = sqlStatement(
         "SELECT * FROM insurance_data WHERE " .
         "pid = ? AND date <= ? ORDER BY type ASC, date DESC",
-        array($pid, $date)
+        [$pid, $date]
     );
     $prevtype = ''; // type is primary, secondary or tertiary
     while ($drow = sqlFetchArray($dres)) {
-        if (strcmp($prevtype, $drow['type']) == 0) {
+        if (strcmp((string) $prevtype, (string) $drow['type']) == 0) {
             continue;
         }
         $prevtype = $drow['type'];
@@ -197,10 +189,10 @@ function loadPayerInfo($pid, $date = '')
         $ins = count($payers);
         $crow = sqlQuery(
             "SELECT * FROM insurance_companies WHERE id = ?",
-            array($drow['provider'])
+            [$drow['provider']]
         );
         $orow = new InsuranceCompany($drow['provider']);
-        $payers[$ins] = array();
+        $payers[$ins] = [];
         $payers[$ins]['data'] = $drow;
         $payers[$ins]['company'] = $crow;
         $payers[$ins]['object'] = $orow;
@@ -213,17 +205,17 @@ function loadGuarantorInfo($pid, $date = '')
     if (empty($date)) {
         $date = date('Y-m-d');
     }
-    $guarantors = array();
+    $guarantors = [];
     $gres = sqlStatement(
         "SELECT * FROM insurance_data WHERE " .
         "pid = ? AND date <= ? ORDER BY type ASC, date DESC LIMIT 1",
-        array($pid, $date)
+        [$pid, $date]
     );
     $prevtype = ''; // type is primary, secondary or tertiary
     while ($drow = sqlFetchArray($gres)) {
         $gnt = count($guarantors);
 
-        $guarantors[$gnt] = array();
+        $guarantors[$gnt] = [];
         $guarantors[$gnt]['data'] = $drow;
     }
     return $guarantors;
@@ -232,12 +224,11 @@ function loadGuarantorInfo($pid, $date = '')
 /**
  * Generate HL7 for the specified procedure order.
  *
- * @param integer $orderid Procedure order ID.
- * @param string &$out     Container for target HL7 text.
- * @param string &$reqStr
- * @return string            Error text, or empty if no errors.
+ * @param  int   $orderid  Procedure order ID.
+ * @return Hl7OrderResult  Result object containing HL7 text and lab-specific 2D barcode requisition data.
+ * @throws Hl7OrderGenerationException On errors with descriptive message.
  */
-function gen_hl7_order($orderid, &$out, &$reqStr)
+function gen_hl7_order(int $orderid): Hl7OrderResult
 {
 
     // Delimiters
@@ -319,10 +310,10 @@ function gen_hl7_order($orderid, &$out, &$reqStr)
         "f.form_id = po.procedure_order_id AND " .
         "pd.pid = f.pid AND " .
         "u.id = po.provider_id",
-        array($orderid)
+        [$orderid]
     );
     if (empty($porow)) {
-        return "Procedure order, ordering provider or lab is missing for order ID '$orderid'";
+        throw new Hl7OrderGenerationException("Procedure order, ordering provider or lab is missing for order ID '$orderid'");
     }
 
     $pcres = sqlStatement(
@@ -333,7 +324,7 @@ function gen_hl7_order($orderid, &$out, &$reqStr)
         "pc.procedure_order_id = ? AND " .
         "pc.do_not_send = 0 " .
         "ORDER BY pc.procedure_order_seq",
-        array($orderid)
+        [$orderid]
     );
 
     $pdres = sqlStatement(
@@ -344,7 +335,7 @@ function gen_hl7_order($orderid, &$out, &$reqStr)
         "pc.procedure_order_id = ? AND " .
         "pc.do_not_send = 0 " .
         "ORDER BY pc.procedure_order_seq",
-        array($orderid)
+        [$orderid]
     );
 
     $vitals = sqlQuery(
@@ -355,12 +346,12 @@ function gen_hl7_order($orderid, &$out, &$reqStr)
     $P[70] = $vitals['height'];
     $P[88] = $vitals['bps'] . '^' . $vitals['bpd'];
     $P[89] = $vitals['waist_circ'];
-    $C[17] = hl7Date(date("Ymd", strtotime($porow['date_collected'])));
+    $C[17] = !empty($porow['date_collected']) ? hl7Date(date("Ymd", strtotime((string) $porow['date_collected']))) : '';
     if (empty($porow['account'])) {
-        return "ERROR! Missing this orders facility location account code (Facility Id) in Facility!";
+        throw new Hl7OrderGenerationException("Missing this orders facility location account code (Facility Id) in Facility!");
     }
     // Message Header
-    $bill_type = strtoupper(substr($porow['billing_type'], 0, 1));
+    $bill_type = strtoupper(substr((string) $porow['billing_type'], 0, 1));
     $out .= "MSH" .
         $d1 . "$d2~\\&" .               // Encoding Characters (delimiters)
         $d1 . $porow['send_app_id'] .   // Sending Application ID
@@ -524,7 +515,7 @@ function gen_hl7_order($orderid, &$out, &$reqStr)
             $P[52] = hl7Workman($payer['data']['policy_type']);
         }
         if ($setid === 0) {
-            return "\nInsurance is being billed but patient does not have any payers on record!";
+            throw new Hl7OrderGenerationException("Insurance is being billed but patient does not have any payers on record!");
         }
     } else { // no insurance record
         ++$setid;
@@ -573,13 +564,13 @@ function gen_hl7_order($orderid, &$out, &$reqStr)
 
     $setid2 = 0;
     // this gets the order default codes
-    $relcodes = explode(';', $porow['order_diagnosis']);
+    $relcodes = explode(';', (string) $porow['order_diagnosis']);
     $relcodes = array_unique($relcodes);
     foreach ($relcodes as $codestring) {
         if ($codestring === '') {
             continue;
         }
-        list($codetype, $code) = explode(':', $codestring);
+        [$codetype, $code] = explode(':', $codestring);
         $desc = lookup_code_descriptions($codestring);
         $out .= "DG1" .
         $d1 . ++$setid2;
@@ -594,12 +585,12 @@ function gen_hl7_order($orderid, &$out, &$reqStr)
     // now from each test order list
     while ($pdrow = sqlFetchArray($pdres)) {
         if (!empty($pdrow['diagnoses'])) {
-            $relcodes = explode(';', $pdrow['diagnoses']);
+            $relcodes = explode(';', (string) $pdrow['diagnoses']);
             foreach ($relcodes as $codestring) {
                 if ($codestring === '') {
                     continue;
                 }
-                list($codetype, $code) = explode(':', $codestring);
+                [$codetype, $code] = explode(':', $codestring);
                 $desc = lookup_code_descriptions($codestring);
                 $out .= "DG1" .
                 $d1 . ++$setid2;             // Set ID
@@ -613,7 +604,7 @@ function gen_hl7_order($orderid, &$out, &$reqStr)
         }
     }
     $D[1] = substr($D[1], 0, strlen($D[1]) - 1);
-    $vvalue = strtoupper($_REQUEST['form_specimen_fasting']) == 'YES' ? "Y" : "N";
+    $vvalue = strtoupper((string) $_REQUEST['form_specimen_fasting']) == 'YES' ? "Y" : "N";
     $ht = str_pad(round($vitals['height']), 3, "0", STR_PAD_LEFT);
     $lb = floor((float)$vitals['weight']);
     $lb = str_pad($lb, 3, "0", STR_PAD_LEFT);
@@ -680,7 +671,7 @@ function gen_hl7_order($orderid, &$out, &$reqStr)
             "a.procedure_order_id = ? AND " .
             "a.procedure_order_seq = ? " .
             "ORDER BY q.seq, a.answer_seq",
-            array($porow['ppid'], $pcrow['procedure_code'], $orderid, $pcrow['procedure_order_seq'])
+            [$porow['ppid'], $pcrow['procedure_code'], $orderid, $pcrow['procedure_order_seq']]
         );
 
         $setid2 = 0;
@@ -688,8 +679,8 @@ function gen_hl7_order($orderid, &$out, &$reqStr)
         while ($qrow = sqlFetchArray($qres)) {
             // Formatting of these answer values may be lab-specific and we'll figure
             // out how to deal with that as more labs are supported.
-            $answer = trim($qrow['answer']);
-            $qcode = trim($qrow['question_code']);
+            $answer = trim((string) $qrow['answer']);
+            $qcode = trim((string) $qrow['question_code']);
             $fldtype = $qrow['fldtype'];
             $datatype = 'ST';
             if ($qcode == 'FASTIN') {
@@ -718,7 +709,7 @@ function gen_hl7_order($orderid, &$out, &$reqStr)
             $d1 . "F" .
             $d0;
         }
-        $vvalue = strtoupper($_REQUEST['form_specimen_fasting']) === 'YES' ? "Y" : "N";
+        $vvalue = strtoupper((string) $_REQUEST['form_specimen_fasting']) === 'YES' ? "Y" : "N";
         $C[24] = $vvalue === "Y" ? ($vvalue . '12') : $vvalue;
         $T[$setid] = hl7Text($pcrow['procedure_code']);
         if ($vvalue === "Y" && $fastflag === false) {
@@ -756,7 +747,7 @@ function gen_hl7_order($orderid, &$out, &$reqStr)
     $reqStr .= "L|$l|\x0D";
     $reqStr .= 'E|0|' . "\x0D";
     $reqStr = strtoupper($reqStr);
-    return '';
+    return new Hl7OrderResult($out, $reqStr);
 }
 
 /**
@@ -773,7 +764,7 @@ function send_hl7_order($ppid, $out)
     $d0 = "\r";
 
     $pprow = sqlQuery("SELECT * FROM procedure_providers " .
-        "WHERE ppid = ?", array($ppid));
+        "WHERE ppid = ?", [$ppid]);
     if (empty($pprow)) {
         return xl('Procedure provider') . " $ppid " . xl('not found');
     }
@@ -817,6 +808,10 @@ function send_hl7_order($ppid, $out)
         // Compute the target path/file name.
         $filename = $msgid . '.hl7';
         if ($pprow['orders_path']) {
+            if (!file_exists($pprow['orders_path'])) {
+                // attempt to make the directory
+                mkdir($pprow['orders_path']);
+            }
             $filename = $pprow['orders_path'] . '/' . $filename;
         }
 
@@ -832,7 +827,7 @@ function send_hl7_order($ppid, $out)
     }
 
     // Falling through to here indicates success.
-    EventAuditLogger::instance()->newEvent(
+    EventAuditLogger::getInstance()->newEvent(
         "proc_order_xmit",
         $_SESSION['authUser'],
         $_SESSION['authProvider'],
