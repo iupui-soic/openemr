@@ -14,6 +14,7 @@
 
 namespace OpenEMR\Services\Globals;
 
+use OpenEMR\Services\UserSettings\UserSettingLayoutService;
 use function sqlStatement;
 use function sqlQuery;
 
@@ -28,15 +29,25 @@ class UserSettingsService
     /**
      * Return user setting(s) from the 'users' table
      *
-     * @param string $label - Setting key
+     * Supports the 'custom:' prefix for accessing layout-based user settings.
+     * Example: getUserSetting('custom:my_field_id', $userId) will fetch the value
+     * from the user_setting_layout_data table.
+     *
+     * @param string $label - Setting key (use 'custom:field_id' for layout-based settings)
      * @param int $user - user id number from users table
      * @param int $defaultUser - user id to check as alternative/default
      * @return Effective user setting for $label (NULL if does not exist)
      */
     public static function getUserSetting($label, $user = null, $defaultUser = 0)
     {
-
         $user = self::effectiveUser($user);
+
+        // Check for custom layout-based settings with 'custom:' prefix
+        if (str_starts_with($label, 'custom:')) {
+            $fieldId = substr($label, 7); // Remove 'custom:' prefix
+            $service = new UserSettingLayoutService();
+            return $service->getUserSettingValue($user, $fieldId);
+        }
 
         // Collect entry for specified user or 0 (global default user)
         $res = sqlQuery("SELECT setting_value FROM user_settings
@@ -71,16 +82,27 @@ class UserSettingsService
     /**
      * Set a user setting
      *
-     * @param string $label - Setting key
+     * Supports the 'custom:' prefix for setting layout-based user settings.
+     * Example: setUserSetting('custom:my_field_id', 'value', $userId) will store the value
+     * in the user_setting_layout_data table.
+     *
+     * @param string $label - Setting key (use 'custom:field_id' for layout-based settings)
      * @param string $value - Setting value
      * @param int $user - user id number from users table
-     * @param boolean $createDefault - If no current global default value, create one.
+     * @param boolean $createDefault - If no current global default value, create one (ignored for custom: prefix).
      * @param boolean $overwrite - If this is set to true, then overwrite the current setting
      */
     public static function setUserSetting($label, $value, $user = null, $createDefault = true, $overwrite = true)
     {
-
         $user = self::effectiveUser($user);
+
+        // Check for custom layout-based settings with 'custom:' prefix
+        if (str_starts_with($label, 'custom:')) {
+            $fieldId = substr($label, 7); // Remove 'custom:' prefix
+            $service = new UserSettingLayoutService();
+            $service->setUserSettingValue($user, $fieldId, $value);
+            return;
+        }
 
         $cur_value = self::getUserSetting($label, $user, $user);
 

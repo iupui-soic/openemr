@@ -1911,6 +1911,24 @@ CREATE TABLE  `facility_user_ids` (
 -- ---------------------------------------------------------
 
 --
+-- Table structure for table `user_setting_layout_data`
+--
+
+DROP TABLE IF EXISTS `user_setting_layout_data`;
+CREATE TABLE `user_setting_layout_data` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_id` bigint(20) NOT NULL,
+  `field_id` varchar(31) NOT NULL COMMENT 'references layout_options.field_id for form_id USR',
+  `field_value` LONGTEXT,
+  `date_created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_field` (`user_id`, `field_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1;
+
+-- ---------------------------------------------------------
+
+--
 -- Table structure for table `fee_schedule`
 --
 
@@ -3638,6 +3656,8 @@ INSERT INTO layout_group_properties (grp_form_id, grp_group_id, grp_title, grp_m
 INSERT INTO layout_group_properties (grp_form_id, grp_group_id, grp_title, grp_mapping) VALUES ('HIS', '5', 'Other'         , ''    );
 INSERT INTO layout_group_properties (grp_form_id, grp_group_id, grp_title, grp_mapping) VALUES ('FACUSR', '' , 'Facility Specific User Information', 'Core');
 INSERT INTO layout_group_properties (grp_form_id, grp_group_id, grp_title, grp_mapping) VALUES ('FACUSR', '1', 'General'                           , ''    );
+INSERT INTO layout_group_properties (grp_form_id, grp_group_id, grp_title, grp_mapping) VALUES ('USR', ''    , 'Custom User Settings'              , 'Core');
+INSERT INTO layout_group_properties (grp_form_id, grp_group_id, grp_title, grp_mapping) VALUES ('USR', '1'   , 'Custom'                            , ''    );
 
 -- --------------------------------------------------------
 

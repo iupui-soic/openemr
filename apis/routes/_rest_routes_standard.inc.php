@@ -41,6 +41,7 @@ use OpenEMR\RestControllers\ProductRegistrationRestController;
 use OpenEMR\RestControllers\RestControllerHelper;
 use OpenEMR\RestControllers\TransactionRestController;
 use OpenEMR\RestControllers\UserRestController;
+use OpenEMR\RestControllers\UserSettingLayoutRestController;
 use OpenEMR\RestControllers\VersionRestController;
 use OpenEMR\Services\Search\SearchQueryConfig;
 // TODO: Remove this import when the OpenEMR\RestControllers\Config\RestConfig is no longer needed
@@ -7287,5 +7288,154 @@ return [
         $return = (new PrescriptionRestController())->getOne($uuid);
 
         return $return;
+    },
+
+    /**
+     *  @OA\Get(
+     *      path="/api/user/settings/custom",
+     *      description="Retrieves all custom user settings for the current user",
+     *      tags={"standard"},
+     *      @OA\Response(
+     *          response="200",
+     *          ref="#/components/responses/standard"
+     *      ),
+     *      @OA\Response(
+     *          response="401",
+     *          ref="#/components/responses/unauthorized"
+     *      ),
+     *      security={{"openemr_auth":{}}}
+     *  )
+     */
+    "GET /api/user/settings/custom" => function (HttpRestRequest $request) {
+        return (new UserSettingLayoutRestController())->getAll($request);
+    },
+
+    /**
+     *  @OA\Get(
+     *      path="/api/user/settings/custom/fields",
+     *      description="Retrieves all available custom user setting field definitions",
+     *      tags={"standard"},
+     *      @OA\Response(
+     *          response="200",
+     *          ref="#/components/responses/standard"
+     *      ),
+     *      @OA\Response(
+     *          response="401",
+     *          ref="#/components/responses/unauthorized"
+     *      ),
+     *      security={{"openemr_auth":{}}}
+     *  )
+     */
+    "GET /api/user/settings/custom/fields" => function (HttpRestRequest $request) {
+        return (new UserSettingLayoutRestController())->getFields($request);
+    },
+
+    /**
+     *  @OA\Get(
+     *      path="/api/user/settings/custom/{field_id}",
+     *      description="Retrieves a specific custom user setting by field_id",
+     *      tags={"standard"},
+     *      @OA\Parameter(
+     *          name="field_id",
+     *          in="path",
+     *          description="The field identifier",
+     *          required=true,
+     *          @OA\Schema(
+     *              type="string"
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response="200",
+     *          ref="#/components/responses/standard"
+     *      ),
+     *      @OA\Response(
+     *          response="404",
+     *          ref="#/components/responses/notfound"
+     *      ),
+     *      @OA\Response(
+     *          response="401",
+     *          ref="#/components/responses/unauthorized"
+     *      ),
+     *      security={{"openemr_auth":{}}}
+     *  )
+     */
+    "GET /api/user/settings/custom/:field_id" => function ($fieldId, HttpRestRequest $request) {
+        return (new UserSettingLayoutRestController())->getOne($fieldId, $request);
+    },
+
+    /**
+     *  @OA\Put(
+     *      path="/api/user/settings/custom/{field_id}",
+     *      description="Updates a custom user setting",
+     *      tags={"standard"},
+     *      @OA\Parameter(
+     *          name="field_id",
+     *          in="path",
+     *          description="The field identifier",
+     *          required=true,
+     *          @OA\Schema(
+     *              type="string"
+     *          )
+     *      ),
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\MediaType(
+     *              mediaType="application/json",
+     *              @OA\Schema(
+     *                  @OA\Property(
+     *                      property="field_value",
+     *                      description="The value to set for this field",
+     *                      type="string"
+     *                  )
+     *              )
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response="200",
+     *          ref="#/components/responses/standard"
+     *      ),
+     *      @OA\Response(
+     *          response="400",
+     *          ref="#/components/responses/badrequest"
+     *      ),
+     *      @OA\Response(
+     *          response="401",
+     *          ref="#/components/responses/unauthorized"
+     *      ),
+     *      security={{"openemr_auth":{}}}
+     *  )
+     */
+    "PUT /api/user/settings/custom/:field_id" => function ($fieldId, HttpRestRequest $request) {
+        $data = $request->getParsedBody();
+        return (new UserSettingLayoutRestController())->put($fieldId, $data, $request);
+    },
+
+    /**
+     *  @OA\Delete(
+     *      path="/api/user/settings/custom/{field_id}",
+     *      description="Deletes (resets to default) a custom user setting",
+     *      tags={"standard"},
+     *      @OA\Parameter(
+     *          name="field_id",
+     *          in="path",
+     *          description="The field identifier",
+     *          required=true,
+     *          @OA\Schema(
+     *              type="string"
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response="200",
+     *          ref="#/components/responses/standard"
+     *      ),
+     *      @OA\Response(
+     *          response="401",
+     *          ref="#/components/responses/unauthorized"
+     *      ),
+     *      security={{"openemr_auth":{}}}
+     *  )
+     */
+    "DELETE /api/user/settings/custom/:field_id" => function ($fieldId, HttpRestRequest $request) {
+        return (new UserSettingLayoutRestController())->delete($fieldId, $request);
     }
 ];

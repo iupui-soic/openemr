@@ -22,6 +22,7 @@ require_once("../globals.php");
 require_once("../../custom/code_types.inc.php");
 require_once("$srcdir/globals.inc.php");
 require_once("$srcdir/user.inc.php");
+require_once("$srcdir/options.inc.php");
 
 use OpenEMR\Common\Acl\AclMain;
 use OpenEMR\Common\Auth\AuthHash;
@@ -33,6 +34,7 @@ use OpenEMR\Core\Header;
 use OpenEMR\FHIR\Config\ServerConfig;
 use OpenEMR\OeUI\OemrUI;
 use OpenEMR\Services\Globals\GlobalSetting;
+use OpenEMR\Services\UserSettings\UserSettingLayoutService;
 use Ramsey\Uuid\Uuid;
 
 
@@ -192,6 +194,17 @@ function checkBackgroundServices(): void
                         ++$i;
                     }
                 }
+            }
+        }
+
+        // Save custom user settings from USR layout
+        $usrService = new UserSettingLayoutService();
+        if ($usrService->hasCustomFields()) {
+            $usrFields = $usrService->getLayoutFields();
+            foreach ($usrFields as $usrField) {
+                $fieldId = $usrField['field_id'];
+                $value = get_layout_form_value($usrField);
+                $usrService->setUserSettingValue($_SESSION['authUserID'], $fieldId, $value);
             }
         }
 
@@ -423,6 +436,13 @@ function checkBackgroundServices(): void
                                             "><a href='#'>" .
                                             xlt($grpname) . "</a></li>\n";
                                         ++$i;
+                                    }
+                                }
+                                // Add Custom tab for user mode if USR layout has fields
+                                if ($userMode) {
+                                    $usrLayoutService = new UserSettingLayoutService();
+                                    if ($usrLayoutService->hasCustomFields()) {
+                                        echo " <li><a href='#'>" . xlt('Custom') . "</a></li>\n";
                                     }
                                 }
                                 ?>
@@ -810,6 +830,53 @@ function checkBackgroundServices(): void
                                             "<button type='submit' class='btn btn-primary btn-save oe-pull-toward' name='form_save'" .
                                             "value='" . xla('Save') . "'>" . xlt('Save') . "</button></div>";
                                         echo "<div class='oe-pull-away oe-margin-t-10' style=''>" . xlt($grpname) . " &nbsp;<a href='#' class='text-dark text-decoration-none fa fa-lg fa-arrow-circle-up oe-help-redirect scroll' aria-hidden='true'></a></div><div class='clearfix'></div></div>";
+                                        echo " </div>\n";
+                                    }
+                                }
+
+                                // Render Custom tab content for user mode
+                                if ($userMode) {
+                                    $usrLayoutService = new UserSettingLayoutService();
+                                    if ($usrLayoutService->hasCustomFields()) {
+                                        $usrFields = $usrLayoutService->getLayoutFields();
+                                        $usrUserSettings = $usrLayoutService->getAllUserSettings($_SESSION['authUserID']);
+
+                                        echo " <div class='tab w-100 h-auto' style='font-size: 0.9rem'>\n";
+                                        echo '<div class="striped">';
+                                        echo "<div class='col-sm-12 oe-global-tab-heading'><div class='oe-pull-toward' style='font-size: 1.4rem'>" . xlt('Custom') . " &nbsp;</div><div style='margin-top: 5px'>" . text(xl('Admin-defined custom settings')) . "</div></div>";
+                                        echo "<div class='clearfix'></div>";
+
+                                        $currentGroup = '';
+                                        foreach ($usrFields as $usrField) {
+                                            // Show group header if changed
+                                            if ($usrField['group_id'] !== $currentGroup) {
+                                                if ($currentGroup !== '') {
+                                                    echo "</div>"; // Close previous group
+                                                }
+                                                $currentGroup = $usrField['group_id'];
+                                                $groupTitle = $usrField['group_title'] ?? xl('General');
+                                                echo "<div class='mt-3 mb-2'><strong>" . text($groupTitle) . "</strong></div>";
+                                                echo "<div class='pl-3'>";
+                                            }
+
+                                            $fieldId = $usrField['field_id'];
+                                            $currValue = $usrUserSettings[$fieldId] ?? ($usrField['default_value'] ?? '');
+
+                                            echo "<div class='row form-group'>";
+                                            echo "<div class='col-sm-4'>" . text(xl_layout_label($usrField['title'])) . "</div>";
+                                            echo "<div class='col-sm-8 oe-input' title='" . attr($usrField['description'] ?? '') . "'>";
+                                            generate_form_field($usrField, $currValue);
+                                            echo "</div>";
+                                            echo "</div>";
+                                        }
+                                        if ($currentGroup !== '') {
+                                            echo "</div>"; // Close last group
+                                        }
+
+                                        echo "<div class='btn-group oe-margin-b-10'>" .
+                                            "<button type='submit' class='btn btn-primary btn-save oe-pull-toward' name='form_save'" .
+                                            "value='" . xla('Save') . "'>" . xlt('Save') . "</button></div>";
+                                        echo "<div class='oe-pull-away oe-margin-t-10' style=''>" . xlt('Custom') . " &nbsp;<a href='#' class='text-dark text-decoration-none fa fa-lg fa-arrow-circle-up oe-help-redirect scroll' aria-hidden='true'></a></div><div class='clearfix'></div></div>";
                                         echo " </div>\n";
                                     }
                                 }

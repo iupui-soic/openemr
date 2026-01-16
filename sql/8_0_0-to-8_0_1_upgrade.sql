@@ -112,3 +112,33 @@
 --  #IfMBOEncounterNeeded
 --    desc: Add encounter to the form_misc_billing_options table
 --    arguments: none
+
+--
+-- Table structure for table `user_setting_layout_data`
+-- Stores custom user settings defined via Admin > Layouts > USR form type
+--
+
+#IfNotTable user_setting_layout_data
+CREATE TABLE `user_setting_layout_data` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_id` bigint(20) NOT NULL,
+  `field_id` varchar(31) NOT NULL COMMENT 'references layout_options.field_id for form_id USR',
+  `field_value` LONGTEXT,
+  `date_created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_updated` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_field` (`user_id`, `field_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1;
+#EndIf
+
+--
+-- Add layout_group_properties entries for USR (Custom User Settings) layout form type
+--
+
+#IfNotRow2D layout_group_properties grp_form_id USR grp_group_id
+INSERT INTO layout_group_properties (grp_form_id, grp_group_id, grp_title, grp_mapping) VALUES ('USR', '', 'Custom User Settings', 'Core');
+#EndIf
+
+#IfNotRow2D layout_group_properties grp_form_id USR grp_group_id 1
+INSERT INTO layout_group_properties (grp_form_id, grp_group_id, grp_title, grp_mapping) VALUES ('USR', '1', 'Custom', '');
+#EndIf

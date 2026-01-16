@@ -192,7 +192,7 @@ function swapGroups($id1, $id2): void
 function tableNameFromLayout($layout_id)
 {
     // Skip layouts that store data in vertical tables.
-    if (str_starts_with((string) $layout_id, 'LBF') || str_starts_with((string) $layout_id, 'LBT') || $layout_id == "FACUSR") {
+    if (str_starts_with((string) $layout_id, 'LBF') || str_starts_with((string) $layout_id, 'LBT') || $layout_id == "FACUSR" || $layout_id == "USR") {
         return '';
     }
     if ($layout_id == "DEM") {
