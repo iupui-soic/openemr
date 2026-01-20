@@ -128,6 +128,9 @@ $dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRI
                 appRegister.initiate_login_uri = document.querySelector("#launchUri").value;
                 appRegister.contacts.push(document.querySelector("#contactEmail").value);
                 appRegister.jwks_uri = document.querySelector("#jwksUri").value;
+                if (appRegister.jwks_uri.trim() === "") {
+                    delete appRegister.jwks_uri;
+                }
                 appRegister.jwks = document.querySelector("#jwks").value;
                 appRegister.application_type = document.querySelector("input[name='appType']:checked").value || "private";
                 appRegister.dsi_type = document.querySelector("input[name='dsiType']:checked").value || "";
@@ -141,6 +144,8 @@ $dsiTypesStringNames = DecisionSupportInterventionService::DSI_TYPES_CLIENT_STRI
                         alert(<?php echo xlj("Your JWKS is invalid"); ?>);
                         return;
                     }
+                } else {
+                    delete appRegister.jwks;
                 }
 
                 let scopes = [];

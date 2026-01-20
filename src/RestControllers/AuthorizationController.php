@@ -339,9 +339,16 @@ class AuthorizationController
                     } else if (in_array($key, ['dsi_source_attributes'])) {
                         $params[$key] = $data->all($key);
                     } elseif ($key === 'jwks') {
-                        $jwks = $data->all('jwks');
-                        if (is_string($jwks)) {
-                            $jwks = json_decode($jwks, true, 512, JSON_THROW_ON_ERROR);
+                        // Get raw value first to check type - all() throws if not array
+                        $jwksRaw = $data->get('jwks');
+                        if (is_string($jwksRaw)) {
+                            // Skip empty strings
+                            if (trim($jwksRaw) === '') {
+                                continue;
+                            }
+                            $jwks = json_decode($jwksRaw, true, 512, JSON_THROW_ON_ERROR);
+                        } else {
+                            $jwks = $data->all('jwks');
                         }
                         $params[$key] = json_encode($jwks);
                     } else {
