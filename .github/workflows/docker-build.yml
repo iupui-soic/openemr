@@ -1,48 +1,91 @@
 name: Build OpenEMR Docker Image
 
 on:
-    workflow_dispatch:
+  push:
+    branches: [seiri22]
+    paths:
+      - 'docker/**'
+  workflow_dispatch:
+    inputs:
+      no_cache:
+        description: 'Build without cache (fresh build)'
+        required: false
+        default: 'false'
+        type: boolean
 
 permissions:
-    contents: read
-    packages: write
-    actions: write
+  contents: read
+  packages: write
+  actions: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/seiri22
 
 jobs:
-    build-and-push:
-        runs-on: ubuntu-22.04
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+  build-and-push:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Set up QEMU
-              uses: docker/setup-qemu-action@v3
+      - name: Get latest commit SHA from openemr repo
+        id: get-sha
+        run: |
+          # Get the latest commit SHA from the seiri22 branch to use as cache buster
+          OPENEMR_SHA=$(git ls-remote https://github.com/iupui-soic/openemr.git refs/heads/seiri22 | cut -f1)
+          echo "openemr_sha=${OPENEMR_SHA}" >> $GITHUB_OUTPUT
+          echo "OpenEMR seiri22 branch SHA: ${OPENEMR_SHA}"
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-            - name: Login to GitHub Container Registry
-              uses: docker/login-action@v3
-              with:
-                  registry: ghcr.io
-                  username: ${{ github.repository_owner }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            - name: Build and push Docker image
-              uses: docker/build-push-action@v5
-              with:
-                  context: ./docker
-                  file: ./docker/Dockerfile
-                  platforms: linux/amd64
-                  push: true
-                  tags: ghcr.io/iupui-soic/seiri22:latest
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Delete old package versions
-              uses: actions/delete-package-versions@v5
-              with:
-                  package-name: seiri22
-                  package-type: container
-                  min-versions-to-keep: 3
-                  delete-only-untagged-versions: true
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker
+          file: ./docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Use cache unless manual no-cache requested
+          cache-from: ${{ inputs.no_cache != 'true' && 'type=gha' || '' }}
+          cache-to: type=gha,mode=max
+          build-args: |
+            CACHEBUST=${{ steps.get-sha.outputs.openemr_sha }}
+
+      - name: Delete old untagged package versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: seiri22
+          package-type: container
+          min-versions-to-keep: 3
+          delete-only-untagged-versions: true
+
+      - name: Summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tags:** ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **OpenEMR SHA:** ${{ steps.get-sha.outputs.openemr_sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Cache used:** ${{ inputs.no_cache != 'true' }}" >> $GITHUB_STEP_SUMMARY
