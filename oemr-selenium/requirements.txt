@@ -1,0 +1,7 @@
+# Selenium test dependencies
+selenium>=4.40.0
+pytest>=9.0.0
+pytest-html>=4.2.0
+pytest-metadata>=3.1.1
+pytest-xdist>=3.5.0
+webdriver-manager>=4.0.0

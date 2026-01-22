@@ -1,4 +1,6 @@
 import subprocess
+import sys
+import os
 from datetime import datetime
 
 # List of email addresses to send to
@@ -6,7 +8,9 @@ recipients = ['abc@mail.com','xyz@mail.com']
 recipient_string = ",".join(recipients)
 
 # Path to the HTML file you want to attach
-html_file_path = '/home/ksunchu/openemr/oemr-selenium/reports/report.html'
+# Can be passed as command-line argument or uses default
+default_report_path = os.path.join(os.path.dirname(__file__), 'reports', 'report.html')
+html_file_path = sys.argv[1] if len(sys.argv) > 1 else default_report_path
 
 current_time = datetime.now()
 
