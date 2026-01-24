@@ -253,6 +253,8 @@ class ServerScopeListEntity
                 "user/version.read",
                 "user/vital.read",
                 "user/vital.write",
+                "user/custom.read",
+                "user/custom.write",
             ];
         }
         return $this->v1ApiScopes;
@@ -422,6 +424,7 @@ class ServerScopeListEntity
             'user' => xl("user information including user name, email, and roles"),
             'version' => xl("version information including version number, release date, and release notes"),
             'vital' => xl("vital signs including height, weight, blood pressure, and heart rate"),
+            'custom' => xl("custom user settings and preferences"),
             default => xl("medical records for this resource type")
         };
         if ($context == "user") {
