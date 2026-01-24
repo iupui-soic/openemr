@@ -1,7 +1,5 @@
 <?php declare(strict_types = 1);
 
-// total 8324 errors
-
 $ignoreErrors = [];
 $ignoreErrors[] = [
     'message' => '#^Variable \\$web_root might not be defined\\.$#',
@@ -1010,11 +1008,6 @@ $ignoreErrors[] = [
 ];
 $ignoreErrors[] = [
     'message' => '#^Variable \\$CountIndexBelow might not be defined\\.$#',
-    'count' => 1,
-    'path' => __DIR__ . '/../../interface/billing/edit_payment.php',
-];
-$ignoreErrors[] = [
-    'message' => '#^Variable \\$QueryPart might not be defined\\.$#',
     'count' => 1,
     'path' => __DIR__ . '/../../interface/billing/edit_payment.php',
 ];
