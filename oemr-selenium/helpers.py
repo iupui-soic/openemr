@@ -6,7 +6,10 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import (
+    StaleElementReferenceException,
+    TimeoutException
+)
 from dataclasses import dataclass
 from typing import List
 
@@ -239,6 +242,25 @@ def js_click(browser, element):
     """Click element using JavaScript - more reliable than Selenium click for menus."""
     browser.execute_script("arguments[0].click();", element)
 
+#change1 OpenEMR buttons (including global search) listen to mousedown, not click
+def js_mousedown(browser, element):
+    """
+    REQUIRED for OpenEMR:
+    Triggers KnockoutJS event bindings (data-bind: mousedown)
+    """
+    browser.execute_script(
+        """
+        const evt = new MouseEvent('mousedown', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+        });
+        arguments[0].dispatchEvent(evt);
+        """,
+        element,
+    )
+
+
 
 def wait_and_js_click(browser, by, value, timeout=DEFAULT_TIMEOUT):
     """Wait for element and click using JavaScript."""
@@ -247,6 +269,19 @@ def wait_and_js_click(browser, by, value, timeout=DEFAULT_TIMEOUT):
     )
     js_click(browser, element)
     return element
+
+#chabge2 Used for buttons that visually exist but don’t respond to .click().
+
+def wait_and_js_mousedown(browser, by, value, timeout=DEFAULT_TIMEOUT):
+    element = WebDriverWait(browser, timeout).until(
+        EC.presence_of_element_located((by, value))
+    )
+    browser.execute_script(
+        "arguments[0].scrollIntoView({block:'center'});", element
+    )
+    js_mousedown(browser, element)
+    return element
+
 
 
 def click_with_retry(browser, by, value, timeout=DEFAULT_TIMEOUT, retries=3):
@@ -270,7 +305,9 @@ def click_with_retry(browser, by, value, timeout=DEFAULT_TIMEOUT, retries=3):
             # Try JavaScript click as fallback
             try:
                 element = browser.find_element(by, value)
-                js_click(browser, element)
+                #js_click(browser, element)
+                js_mousedown(browser, element)#change3 Fallback clicks were still failing because click() ≠ mousedown
+
                 return element
             except Exception:
                 continue
@@ -315,7 +352,9 @@ def navigate_to_menu(browser, menu_path, timeout=DEFAULT_TIMEOUT):
                 time.sleep(0.2)
 
                 # Use JavaScript click for reliability
-                js_click(browser, element)
+                #js_click(browser, element)
+                js_mousedown(browser, element)#change3 Menu items are also bound via KnockoutJS mousedown.
+
                 clicked = True
 
                 # Wait a bit for menu to expand (except for last item)
@@ -329,78 +368,40 @@ def navigate_to_menu(browser, menu_path, timeout=DEFAULT_TIMEOUT):
             raise Exception(f"Could not find menu item: {menu_text}")
 
     wait_for_page_load(browser)
-
+#change5
 
 def switch_to_frame_with_retry(browser, frame_name, timeout=DEFAULT_TIMEOUT, retries=3):
-    """Switch to iframe with retry logic. Tries multiple strategies."""
-    # Wait a moment for frame to appear after page actions
-    time.sleep(0.5)
+    """
+    Switch to iframe if it exists.
+    OR continue in main DOM if iframe was removed (new OpenEMR versions).
+    """
 
-    # Try different frame locator strategies
-    frame_locators = [
-        (By.NAME, frame_name),
-        (By.CSS_SELECTOR, f"iframe[name='{frame_name}']"),
-        (By.ID, frame_name),
-        (By.XPATH, f"//iframe[@name='{frame_name}']"),
-        (By.XPATH, f"//iframe[contains(@name, '{frame_name}')]"),
-        (By.XPATH, f"//iframe[contains(@src, '{frame_name}')]"),
-    ]
-
-    for attempt in range(retries):
-        # First, make sure we're at default content
+    for _ in range(retries):
         try:
             browser.switch_to.default_content()
         except Exception:
             pass
 
-        # Try each locator strategy
-        for by, locator in frame_locators:
-            try:
-                WebDriverWait(browser, timeout / len(frame_locators)).until(
-                    EC.frame_to_be_available_and_switch_to_it((by, locator))
-                )
-                wait_for_page_load(browser)
-                return True
-            except Exception:
-                try:
-                    browser.switch_to.default_content()
-                except Exception:
-                    pass
-                continue
-
-        # Fallback: try to find iframe element directly and switch to it
         try:
-            browser.switch_to.default_content()
-            iframes = browser.find_elements(By.TAG_NAME, "iframe")
-            for iframe in iframes:
-                try:
-                    iframe_name = iframe.get_attribute("name") or ""
-                    iframe_id = iframe.get_attribute("id") or ""
-                    iframe_src = iframe.get_attribute("src") or ""
-
-                    if frame_name in iframe_name or frame_name in iframe_id or frame_name in iframe_src:
-                        browser.switch_to.frame(iframe)
-                        wait_for_page_load(browser)
-                        return True
-                except Exception:
-                    browser.switch_to.default_content()
-                    continue
-        except Exception:
-            pass
-
-        if attempt < retries - 1:
-            time.sleep(1)  # Wait longer between retries
-
-    raise Exception(f"Could not switch to frame: {frame_name}")
-
-
-def select_dropdown_option(browser, dropdown_selector, option_text, timeout=DEFAULT_TIMEOUT):
-    """Select an option from a dropdown by visible text."""
-    dropdown = WebDriverWait(browser, timeout).until(
-        EC.presence_of_element_located(dropdown_selector)
-    )
-    for option in dropdown.find_elements(By.TAG_NAME, 'option'):
-        if option.text.strip() == option_text:
-            option.click()
+            WebDriverWait(browser, timeout).until(
+                EC.frame_to_be_available_and_switch_to_it((By.NAME, frame_name))
+            )
             return True
+        except TimeoutException:
+            pass
+
+        iframes = browser.find_elements(By.TAG_NAME, "iframe")
+        for iframe in iframes:
+            name = iframe.get_attribute("name") or ""
+            fid = iframe.get_attribute("id") or ""
+            src = iframe.get_attribute("src") or ""
+
+            if frame_name in name or frame_name in fid or frame_name in src:
+                browser.switch_to.frame(iframe)
+                return True
+
+        time.sleep(0.5)
+
+    # iframe genuinely does not exist → VALID
+    browser.switch_to.default_content()
     return False
