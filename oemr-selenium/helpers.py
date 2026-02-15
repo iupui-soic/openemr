@@ -240,12 +240,29 @@ def js_click(browser, element):
     browser.execute_script("arguments[0].click();", element)
 
 
+def js_mousedown(browser, element):
+    """Dispatch a mousedown event using JavaScript. Required for elements bound to mousedown (e.g. Knockout.js)."""
+    browser.execute_script(
+        "arguments[0].dispatchEvent(new MouseEvent('mousedown', {bubbles: true, cancelable: true}));",
+        element
+    )
+
+
 def wait_and_js_click(browser, by, value, timeout=DEFAULT_TIMEOUT):
     """Wait for element and click using JavaScript."""
     element = WebDriverWait(browser, timeout).until(
         EC.presence_of_element_located((by, value))
     )
     js_click(browser, element)
+    return element
+
+
+def wait_and_js_mousedown(browser, by, value, timeout=DEFAULT_TIMEOUT):
+    """Wait for element and trigger mousedown using JavaScript."""
+    element = WebDriverWait(browser, timeout).until(
+        EC.presence_of_element_located((by, value))
+    )
+    js_mousedown(browser, element)
     return element
 
 
@@ -392,6 +409,21 @@ def switch_to_frame_with_retry(browser, frame_name, timeout=DEFAULT_TIMEOUT, ret
             time.sleep(1)  # Wait longer between retries
 
     raise Exception(f"Could not switch to frame: {frame_name}")
+
+
+def wait_for_datatable_filter(browser, info_element_id="pt_table_info", timeout=DEFAULT_TIMEOUT):
+    """Wait for DataTable filtering to complete by polling until results text stabilizes."""
+    previous_text = ""
+    for _ in range(timeout):
+        time.sleep(1)
+        try:
+            current_text = browser.find_element(By.ID, info_element_id).text
+            if current_text == previous_text:
+                return current_text
+            previous_text = current_text
+        except Exception:
+            continue
+    return previous_text
 
 
 def select_dropdown_option(browser, dropdown_selector, option_text, timeout=DEFAULT_TIMEOUT):
