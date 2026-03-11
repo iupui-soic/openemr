@@ -25,7 +25,52 @@ if (!AclMain::aclCheckCore('admin', 'users')) {
     echo (new TwigContainer(null, $GLOBALS['kernel']))->getTwig()->render('core/unauthorized.html.twig', ['pageTitle' => xl("Logs Viewer")]);
     exit;
 }
-
+if (!empty($_GET['export_csv']) && !empty($_GET['show'])) {
+    if (!CsrfUtils::verifyCsrfToken($_GET["csrf_token_form"])) {
+        CsrfUtils::csrfNotVerified();
+    }
+    $start_date = (!empty($_GET["start_date"])) ? DateTimeToYYYYMMDDHHMMSS($_GET["start_date"]) : date("Y-m-d") . " 00:00";
+    $end_date   = (!empty($_GET["end_date"]))   ? DateTimeToYYYYMMDDHHMMSS($_GET["end_date"])   : date("Y-m-d") . " 23:59";
+    $form_user = $_GET['form_user'] ?? ''; $form_pid = $_GET['form_pid'] ?? ''; $form_patient = $_GET['form_patient'] ?? '';
+    $eventname = $_GET['eventname'] ?? ''; $type_event = $_GET['type_event'] ?? ''; $sortby = $_GET['sortby'] ?? ''; $direction = $_GET['direction'] ?? '';
+    if (empty($form_patient)) { $form_pid = ''; }
+    $gev = ''; $tevent = '';
+    if ($eventname !== '' && $type_event !== '') { $gev = $eventname . '-' . $type_event; }
+    elseif ($eventname === '' && $type_event !== '') { $tevent = $type_event; }
+    elseif ($type_event === '' && $eventname !== '') { $gev = $eventname; }
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="openemr_logs_' . date('Ymd_His') . '.csv"');
+    header('Pragma: no-cache'); header('Expires: 0');
+    $out = fopen('php://output', 'w');
+    fputcsv($out, ['Date','Event','Category','User','Certificate User','Group','Patient ID','Success','API Logging','Comments']);
+    $cryptoGen = new CryptoGen();
+    $ret = EventAuditLogger::getInstance()->getEvents(['sdate'=>$start_date,'edate'=>$end_date,'user'=>$form_user,'patient'=>$form_pid,'sortby'=>$sortby,'levent'=>$gev,'tevent'=>$tevent,'direction'=>$direction]);
+    if ($ret) {
+        $patterns = ['/^success/','/^failure/','/ encounter/']; $replace = ['success','failure',' encounter'];
+        while ($iter = sqlFetchArray($ret)) {
+            if (empty($iter['id'])) continue;
+            $commentEncrStatus = !empty($iter['encrypt']) ? $iter['encrypt'] : 'No';
+            $encryptVersion = !empty($iter['version']) ? $iter['version'] : 0;
+            if ($commentEncrStatus === 'Yes') {
+                if ($encryptVersion >= 3 && extension_loaded('openssl')) { $trans = $cryptoGen->decryptStandard($iter['comments']); $trans = ($trans !== false) ? preg_replace($patterns, $replace, $trans) : 'Unable to decrypt.'; }
+                elseif ($encryptVersion == 2 && extension_loaded('openssl')) { $trans = $cryptoGen->aes256DecryptTwo($iter['comments']); $trans = ($trans !== false) ? preg_replace($patterns, $replace, $trans) : 'Unable to decrypt.'; }
+                elseif ($encryptVersion == 1 && extension_loaded('openssl')) { $trans = preg_replace($patterns, $replace, $cryptoGen->aes256DecryptOne($iter['comments'])); }
+                else { $trans = 'Unable to decrypt.'; }
+            } else {
+                if ($encryptVersion >= 4) { $iter['comments'] = base64_decode((string)$iter['comments']); }
+                $trans = preg_replace($patterns, $replace, (string)$iter['comments']);
+            }
+            $trans = mb_convert_encoding((string)$trans, 'UTF-8', 'UTF-8');
+            $api_col = !empty($iter['ip_address']) ? $iter['ip_address'] . ', ' . $iter['method'] . ', ' . $iter['request'] : '';
+            fputcsv($out, [oeFormatDateTime($iter['date'],'global',true),preg_replace('/select$/','Query',(string)$iter['event']),$iter['category']??'',$iter['user']??'',$iter['crt_user']??'',$iter['groupname']??'',$iter['patient_id']??'',$iter['success']??'',$api_col,$trans]);
+        }
+    }
+    if ($eventname === 'disclosure' || $gev === '') {
+        $ret2 = EventAuditLogger::getInstance()->getEvents(['sdate'=>$start_date,'edate'=>$end_date,'user'=>$form_user,'patient'=>$form_pid,'sortby'=>$sortby,'event'=>'disclosure']);
+        if ($ret2) { while ($iter = sqlFetchArray($ret2)) { $comments = 'Recipient Name: ' . ($iter['recipient'] ?? '') . '; Disclosure Info: ' . ($iter['description'] ?? ''); fputcsv($out, [oeFormatDateTime($iter['date'],'global',true),$iter['event']??'','',$iter['user']??'','','', $iter['patient_id']??'','','', $comments]); } }
+    }
+    fclose($out); exit;
+}
 if (!empty($_GET)) {
     if (!CsrfUtils::verifyCsrfToken($_GET["csrf_token_form"])) {
         CsrfUtils::csrfNotVerified();
@@ -258,6 +303,7 @@ if (!empty($_GET)) {
                                 <input type="hidden" name="event" value="<?php echo attr($event ?? ''); ?>" />
                                 <div class="btn-group" role="group">
                                     <a href="javascript:document.theform.submit();" class="btn btn-secondary btn-save"><?php echo xlt('Submit'); ?></a>
+                                    <a href="javascript:exportCsv();" class="btn btn-secondary"><?php echo xlt('Export CSV'); ?></a>
                                 </div>
                             </form>
                             <?php if (!(!empty($_GET['show']) && ($_GET['show'] = 'show') && $start_date && $end_date && ($err_message != 1))) { ?>
@@ -525,7 +571,19 @@ if (!empty($_GET)) {
                     <?php // can add any additional javascript settings to datetimepicker here; need to prepend first setting with a comma ?>
                 });
             });
-
+            function exportCsv() {
+                var form = document.theform;
+                var input = document.createElement('input');
+                input.type  = 'hidden';
+                input.name  = 'export_csv';
+                input.value = '1';
+                form.appendChild(input);
+                var prevTarget = form.target;
+                form.target = '_blank';
+                form.submit();
+                form.removeChild(input);
+                form.target = prevTarget;
+            }
             function set_sort_direction() {
                 if ($('#direction').val() == 'asc')
                     $('#direction').val('desc');
