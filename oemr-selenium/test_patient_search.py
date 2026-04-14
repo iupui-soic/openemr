@@ -12,7 +12,9 @@ from helpers import (
     wait_for_page_load,
     wait_for_element,
     wait_and_js_click,
+    wait_and_js_mousedown,
     switch_to_frame_with_retry,
+    wait_for_datatable_filter,
     js_click,
     create_browser,
     DEFAULT_TIMEOUT,
@@ -100,7 +102,7 @@ class TestWebsite_patient_search:
         search_box = wait_for_element(self.browser, By.ID, 'anySearchBox')
         search_box.clear()
         search_box.send_keys('100')
-        wait_and_js_click(self.browser, By.ID, 'search_globals')
+        wait_and_js_mousedown(self.browser, By.ID, 'search_globals')
         wait_for_page_load(self.browser)
 
         switch_to_frame_with_retry(self.browser, "fin")
@@ -121,7 +123,7 @@ class TestWebsite_patient_search:
         search_box = wait_for_element(self.browser, By.ID, 'anySearchBox')
         search_box.clear()
         search_box.send_keys('12000')
-        wait_and_js_click(self.browser, By.ID, 'search_globals')
+        wait_and_js_mousedown(self.browser, By.ID, 'search_globals')
         wait_for_page_load(self.browser)
 
         switch_to_frame_with_retry(self.browser, "fin")
@@ -206,7 +208,8 @@ class TestWebsite_patient_search:
         search_box.send_keys(Keys.RETURN)
         wait_for_page_load(self.browser)
 
-        results_text = wait_for_element(self.browser, By.ID, "pt_table_info").text
+        # Wait for DataTable async filtering to complete before checking results
+        results_text = wait_for_datatable_filter(self.browser)
 
         match = re.search(r'Showing (\d+)', results_text)
         assert match, "Could not find 'Showing X' in results text!"
